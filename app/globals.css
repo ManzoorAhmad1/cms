@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
+
+:root {
+  --verde-heading: #3A363A;
+  --verde-text: #948E84;
+  --verde-white: #ffffff;
+  --verde-background: #f3ede2;
+  --verde-accent: #8e402f;
+  --font-cormorant: 'Cormorant Garamond', Georgia, serif;
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: var(--verde-heading);
+  background: var(--verde-background);
+  font-family: var(--font-cormorant);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-cormorant);
+  color: var(--verde-heading);
+}
+
+input, textarea, select {
+  font-family: var(--font-cormorant);
+}
+
+.btn-primary {
+  background-color: var(--verde-accent);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: #7a3628;
+}
