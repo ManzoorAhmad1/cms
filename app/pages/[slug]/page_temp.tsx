@@ -27,7 +27,7 @@ export default function EditPage({ params: paramsPromise }: { params: Promise<{ 
   useEffect(() => {
     const fetchPage = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
         const res = await fetch(`${API_URL}/pages/${params.slug}`);
         if (!res.ok) throw new Error("Failed to fetch page");
         const data = await res.json();
@@ -96,7 +96,7 @@ export default function EditPage({ params: paramsPromise }: { params: Promise<{ 
     const formData = new FormData();
     formData.append("file", file);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     try {
       const response = await fetch(`${API_URL}/upload`, {
@@ -129,7 +129,7 @@ export default function EditPage({ params: paramsPromise }: { params: Promise<{ 
   // -- Master Save -- //
   const handleSavePage = async () => {
     setSaving(true);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     try {
       const res = await fetch(`${API_URL}/pages/${id}`, {

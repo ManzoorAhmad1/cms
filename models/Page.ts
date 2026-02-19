@@ -14,7 +14,7 @@ export interface IPage extends mongoose.Document {
     ctaText?: string;
     order: number;
     styles?: any;
-    items?: Array<{ name: string; description: string; price?: string }>; // For menu items
+    items?: Array<{ name: string; description: string; price?: string; image?: string; link?: string }>; // For menu items & venue cards
   }>;
 }
 
@@ -35,7 +35,9 @@ const PageSchema: Schema<IPage> = new Schema({
       items: [{
         name: String,
         description: String,
-        price: String
+        price: String,
+        image: String,
+        link: String
       }]
     },
   ],
