@@ -198,6 +198,70 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
+  const handleMenuImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, sectionIndex: number, imageIndex: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const localPreviewUrl = URL.createObjectURL(file);
+    setSections(prevSections => {
+      const newSections = [...prevSections];
+      const images = [...(newSections[sectionIndex].images || [])];
+      images[imageIndex] = localPreviewUrl;
+      newSections[sectionIndex] = { 
+        ...newSections[sectionIndex], 
+        images,
+        [`_uploadingMenuImage${imageIndex}`]: true 
+      };
+      return newSections;
+    });
+
+    setSaving(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+    try {
+      const response = await fetch(`${API_URL}/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.url) {
+        URL.revokeObjectURL(localPreviewUrl);
+        setSections(prevSections => {
+          const newSections = [...prevSections];
+          const images = [...(newSections[sectionIndex].images || [])];
+          images[imageIndex] = data.url;
+          newSections[sectionIndex] = { 
+            ...newSections[sectionIndex], 
+            images,
+            [`_uploadingMenuImage${imageIndex}`]: false 
+          };
+          return newSections;
+        });
+        const label = imageIndex === 0 ? 'Cover' : `Page ${imageIndex}`;
+        toast.success(`Menu ${label} uploaded`);
+      }
+    } catch (error) {
+      console.error("Upload failed", error);
+      toast.error("Menu image upload failed");
+      URL.revokeObjectURL(localPreviewUrl);
+      setSections(prevSections => {
+        const newSections = [...prevSections];
+        const images = [...(newSections[sectionIndex].images || [])];
+        images[imageIndex] = '';
+        newSections[sectionIndex] = { 
+          ...newSections[sectionIndex], 
+          images,
+          [`_uploadingMenuImage${imageIndex}`]: false 
+        };
+        return newSections;
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleItemImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, sectionIndex: number, itemIndex: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -329,7 +393,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
 
       if (res.ok) {
         toast.success("Page Updated Successfully!");
-        router.push("/");
+        // Stay on same page after saving
         router.refresh();
       } else {
         const errorData = await res.json();
@@ -435,6 +499,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   {section.type === 'philosophy' && '🎨 Philosophy Section'}
                   {section.type === 'gallery' && '📸 Instagram Gallery'}
                   {section.type === 'menu' && '🍽️ Menu Section'}
+                  {section.type === 'menu-category' && '🍽️ Menu Category'}
                 </span>
               </div>
 
@@ -614,6 +679,62 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       </div>
                       <p className="text-[10px] text-blue-600 mt-3">
                         💡 Click on any image to upload/replace. Recommended size: 750x750px (square)
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Edit Menu Category section */}
+                  {section.type === 'menu-category' && (
+                    <div className="bg-gray-50 border border-gray-200 p-4 rounded">
+                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-4">Menu Category Images</h4>
+                      <p className="text-[10px] text-gray-600 mb-4">
+                        First image is the cover, remaining images are menu pages shown in the carousel.
+                      </p>
+                      <div className="grid grid-cols-3 gap-4">
+                        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((idx) => {
+                          const imageUrl = section.images?.[idx] || '';
+                          const isUploading = (section as any) [`_uploadingMenuImage${idx}`];
+                          const isCover = idx === 0;
+                          
+                          return (
+                            <div key={idx} className="bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
+                              <div className="relative aspect-[3/4] bg-gray-200 border-2 border-dashed border-gray-300 hover:border-orange-400 transition cursor-pointer">
+                                {imageUrl ? (
+                                  <>
+                                    <Image src={imageUrl} alt={`Menu ${isCover ? 'Cover' : `Page ${idx}`}`} fill className="object-cover" unoptimized />
+                                    {isUploading && (
+                                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="text-center">
+                                      <Upload className="mx-auto mb-1 text-gray-400" size={20} />
+                                      <span className="text-[9px] text-gray-500">{isCover ? 'Cover' : `Page ${idx}`}</span>
+                                    </div>
+                                  </div>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleMenuImageUpload(e, index, idx)}
+                                  className="absolute inset-0 opacity-0 cursor-pointer"
+                                  disabled={isUploading}
+                                />
+                              </div>
+                              <div className="p-2 text-center bg-orange-50">
+                                <span className="text-[10px] text-orange-700 uppercase tracking-wide font-semibold">
+                                  {isCover ? '📋 Cover' : `📄 Page ${idx}`}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-blue-600 mt-3">
+                        💡 Upload cover image first, then add menu pages. Click any image to upload/replace.
                       </p>
                     </div>
                   )}
@@ -855,6 +976,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     {section.type === 'philosophy' && '🎨 Philosophy: Heading (caps), 2 philosophy paragraphs, Art title + 3 paragraphs, CTA button'}
                     {section.type === 'gallery' && '📸 Instagram Gallery: Heading, subheading, Instagram link, 6 gallery images'}
                     {section.type === 'menu' && '🍽️ Menu: Items managed via seed file'}
+                    {section.type === 'menu-category' && '📋 Menu Category: Heading (category name), description, 1 cover image + up to 9 menu page images'}
                   </div>
                 </div>
               </div>

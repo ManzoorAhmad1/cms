@@ -5,7 +5,7 @@ export interface IPage extends mongoose.Document {
   slug: string; // e.g., 'home', 'about', 'contact'
   title: string;
   sections: Array<{
-    type: 'hero' | 'gallery' | 'text' | 'features' | 'philosophy' | 'menu' | 'contact_info' | 'parallax';
+    type: 'hero' | 'gallery' | 'text' | 'features' | 'philosophy' | 'menu' | 'menu-category' | 'contact_info' | 'parallax';
     heading?: string;
     subheading?: string;
     content?: string;
@@ -23,7 +23,7 @@ const PageSchema: Schema<IPage> = new Schema({
   title: { type: String, required: true },
   sections: [
     {
-      type: { type: String, enum: ['hero', 'gallery', 'text', 'features', 'philosophy', 'menu', 'contact_info', 'parallax'], default: 'text' },
+      type: { type: String, enum: ['hero', 'gallery', 'text', 'features', 'philosophy', 'menu', 'menu-category', 'contact_info', 'parallax'], default: 'text' },
       heading: { type: String },
       subheading: { type: String },
       content: { type: String },
