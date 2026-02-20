@@ -17,6 +17,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [sections, setSections] = useState<any[]>([]);
+  const [activeMenuTab, setActiveMenuTab] = useState(0); // For CMS menu tab navigation
+  const [editMode, setEditMode] = useState<{[key: number]: 'preview' | 'html'}>({});
 
   useEffect(() => {
     const fetchPage = async () => {
@@ -45,6 +47,19 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     }
   }, [pageSlug]);
 
+  // After data loads, parse HTML content of menu sections into simple _items
+  useEffect(() => {
+    if (!loading) {
+      setSections(prev => prev.map(section => {
+        if (section.type === 'menu' && section.content && !section._items) {
+          return { ...section, _items: parseHTMLToItems(section.content) };
+        }
+        return section;
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   const handleAddSection = () => {
     setSections([...sections, { type: "text", content: "", image: "" }]);
   };
@@ -69,6 +84,100 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
       items[itemIndex] = { ...items[itemIndex], [field]: value };
       newSections[sectionIndex] = { ...newSections[sectionIndex], items };
       return newSections;
+    });
+  };
+
+  // Parse HTML content into _items array for menu sections
+  // Simple sections (h3, hr, div.menu-items, p) → editable rows
+  // Complex divs (cocktail-grid, dessert-grid, menu-experiences, etc.) → locked 'html' block (preserved as-is)
+  const parseHTMLToItems = (htmlContent: string): any[] => {
+    if (!htmlContent || typeof document === 'undefined') return [];
+    const div = document.createElement('div');
+    div.innerHTML = htmlContent;
+    const result: any[] = [];
+    div.childNodes.forEach((node: any) => {
+      if (!node.tagName) return; // skip text/comment nodes
+      const tag = node.tagName;
+      const cls = node.className || '';
+      if (tag === 'H2') {
+        const text = node.textContent?.trim() || '';
+        if (text) result.push({ type: 'h2', name: text });
+      } else if (tag === 'H3') {
+        const text = node.textContent?.trim() || '';
+        if (text) result.push({ type: 'heading', name: text });
+      } else if (tag === 'HR') {
+        result.push({ type: 'divider', name: '' });
+      } else if (tag === 'DIV' && cls === 'menu-items') {
+        // Simple list — each <p> becomes an editable item
+        node.querySelectorAll('p').forEach((p: any) => {
+          const text = p.innerHTML?.trim(); // keep inner HTML (bold, br tags)
+          if (text) result.push({ type: 'item', name: text });
+        });
+      } else if (tag === 'DIV') {
+        // Complex layout div (cocktail-grid, dessert-grid, menu-experiences, etc.)
+        // Preserve it exactly as-is — locked, not editable
+        result.push({ type: 'html', name: node.outerHTML });
+      } else if (tag === 'P') {
+        const text = node.innerHTML?.trim();
+        if (text) result.push({ type: 'item', name: text });
+      }
+    });
+    return result;
+  };
+
+  // Convert _items back to HTML before saving — layout is PRESERVED
+  const convertItemsToHTML = (items: any[]): string => {
+    let html = '';
+    let inMenuDiv = false;
+    items.forEach(item => {
+      if (item.type === 'h2') {
+        if (inMenuDiv) { html += '</div>\n'; inMenuDiv = false; }
+        html += `<h2><strong>${item.name}</strong></h2>\n`;
+      } else if (item.type === 'heading') {
+        if (inMenuDiv) { html += '</div>\n'; inMenuDiv = false; }
+        html += `<h3><strong>${item.name}</strong></h3>\n`;
+      } else if (item.type === 'item') {
+        if (!inMenuDiv) { html += '<div class="menu-items">\n'; inMenuDiv = true; }
+        html += `  <p>${item.name}</p>\n`;
+      } else if (item.type === 'divider') {
+        if (inMenuDiv) { html += '</div>\n'; inMenuDiv = false; }
+        html += '<hr class="menu-divider" />\n';
+      } else if (item.type === 'html') {
+        // Complex block — output exactly as stored, no modifications
+        if (inMenuDiv) { html += '</div>\n'; inMenuDiv = false; }
+        html += item.name + '\n';
+      }
+    });
+    if (inMenuDiv) html += '</div>\n';
+    return html;
+  };
+
+  // Handle change to a menu _items entry
+  const handleMenuItemChange = (sectionIndex: number, itemIndex: number, value: string) => {
+    setSections(prev => {
+      const next = [...prev];
+      const _items = [...(next[sectionIndex]._items || [])];
+      _items[itemIndex] = { ..._items[itemIndex], name: value };
+      next[sectionIndex] = { ...next[sectionIndex], _items };
+      return next;
+    });
+  };
+
+  const handleAddMenuItem = (sectionIndex: number, type: 'heading' | 'item' | 'divider') => {
+    setSections(prev => {
+      const next = [...prev];
+      const _items = [...(next[sectionIndex]._items || []), { type, name: '' }];
+      next[sectionIndex] = { ...next[sectionIndex], _items };
+      return next;
+    });
+  };
+
+  const handleRemoveMenuItem = (sectionIndex: number, itemIndex: number) => {
+    setSections(prev => {
+      const next = [...prev];
+      const _items = (next[sectionIndex]._items || []).filter((_: any, i: number) => i !== itemIndex);
+      next[sectionIndex] = { ...next[sectionIndex], _items };
+      return next;
     });
   };
 
@@ -385,10 +494,24 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     try {
+      // For menu sections: convert _items → HTML, strip client-only fields
+      const sectionsToSave = sections.map(section => {
+        if (section.type === 'menu') {
+          const { _items, ...rest } = section;
+          if (_items && _items.length > 0) {
+            return { ...rest, content: convertItemsToHTML(_items) };
+          }
+          return rest;
+        }
+        // Strip any client-only fields from other sections too
+        const { _uploading, ...rest } = section;
+        return rest;
+      });
+
       const res = await fetch(`${API_URL}/pages/${id}`, {
-        method: "PUT", // Using PUT to update
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, slug, sections }),
+        body: JSON.stringify({ title, slug, sections: sectionsToSave }),
       });
 
       if (res.ok) {
@@ -474,21 +597,16 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
             </button>
           </div>
 
-          {sections.map((section, index) => {
-            const needsImage = ['hero', 'parallax'].includes(section.type);
+          {/* Render Non-Menu Sections First */}
+          {sections.filter(s => s.type !== 'menu').map((section, originalIndex) => {
+            // Get the actual index in the sections array
+            const index = sections.findIndex((s, i) => i >= 0 && s === section);
+            const needsImage = ['hero', 'parallax'].includes(section.type) || 
+                              (section.type === 'text' && section.images && section.images.length > 0);
             const needsMultipleImages = ['gallery'].includes(section.type);
             
             return (
             <div key={index} className="bg-white p-6 border border-[#e5e0d8] relative shadow-sm group">
-              <button
-                type="button"
-                onClick={() => handleRemoveSection(index)}
-                className="absolute top-4 right-4 text-red-300 hover:text-red-500 transition-colors"
-                title="Remove Section"
-              >
-                <Trash2 size={18} />
-              </button>
-              
               {/* Section Type Label - Read-only */}
               <div className="mb-6 bg-gray-50 border border-gray-200 p-3 rounded">
                 <span className="text-xs uppercase tracking-widest text-gray-600 font-semibold">
@@ -500,6 +618,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   {section.type === 'gallery' && '📸 Instagram Gallery'}
                   {section.type === 'menu' && '🍽️ Menu Section'}
                   {section.type === 'menu-category' && '🍽️ Menu Category'}
+                  {section.type === 'contact_info' && '📞 Contact Information'}
                 </span>
               </div>
 
@@ -518,7 +637,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             alt="Preview"
                             fill
                             className="object-cover"
-                            unoptimized={section.images?.[0]?.startsWith('blob:')}
+                            unoptimized
                           />
                           {section._uploading && (
                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -578,27 +697,76 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   {/* Content - for most types (not hero, not gallery, not philosophy) */}
                   {!['gallery', 'hero', 'philosophy'].includes(section.type) && (
                     <div>
-                      <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                        Content
-                        {section.type === 'features' && (
-                          <span className="text-blue-600 font-normal ml-2 text-[10px]">
-                            (Each paragraph on new line - press Enter twice between paragraphs)
-                          </span>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] font-semibold">
+                          Content
+                          {section.type === 'features' && (
+                            <span className="text-blue-600 font-normal ml-2 text-[10px]">
+                              (Each paragraph on new line)
+                            </span>
+                          )}
+                        </label>
+                        {section.content && section.content.includes('<') && (
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditMode({...editMode, [index]: 'preview'})}
+                              className={`px-3 py-1.5 text-xs uppercase tracking-wide transition-colors ${
+                                (!editMode[index] || editMode[index] === 'preview')
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                              }`}
+                            >
+                              👁️ Preview
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditMode({...editMode, [index]: 'html'})}
+                              className={`px-3 py-1.5 text-xs uppercase tracking-wide transition-colors ${
+                                editMode[index] === 'html'
+                                  ? 'bg-orange-600 text-white'
+                                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                              }`}
+                            >
+                              ⚙️ HTML
+                            </button>
+                          </div>
                         )}
-                      </label>
-                      <textarea
-                        value={section.content || ''}
-                        onChange={(e) => handleSectionChange(index, "content", e.target.value)}
-                        rows={section.type === 'features' ? 12 : 6}
-                        className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-4 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)] leading-relaxed font-mono text-sm"
-                        placeholder={section.type === 'features' 
-                          ? 'Paragraph 1 here\n\nParagraph 2 here\n\nParagraph 3 here\n\nLast line (will be italic)' 
-                          : 'Enter section content...'}
-                      />
-                      {section.type === 'features' && (
-                        <p className="text-[10px] text-gray-500 mt-1">
-                          Tip: Last paragraph will automatically appear in italic. Leave blank lines between paragraphs.
-                        </p>
+                      </div>
+
+                      {/* Show preview if content has HTML and preview mode is active */}
+                      {section.content && section.content.includes('<') && (!editMode[index] || editMode[index] === 'preview') ? (
+                        <div className="space-y-3">
+                          <div 
+                            className="w-full bg-white border-2 border-blue-200 p-6 min-h-[200px] max-h-[400px] overflow-y-auto"
+                            style={{ 
+                              fontFamily: 'Georgia, serif',
+                              fontSize: '14px',
+                              lineHeight: '1.8'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: section.content }}
+                          />
+                          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                            👁️ <strong>Preview Mode:</strong> Switch to HTML mode to edit.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <textarea
+                            value={section.content || ''}
+                            onChange={(e) => handleSectionChange(index, "content", e.target.value)}
+                            rows={section.type === 'features' ? 12 : 6}
+                            className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-4 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)] leading-relaxed font-mono text-sm"
+                            placeholder={section.type === 'features' 
+                              ? 'Paragraph 1 here\n\nParagraph 2 here\n\nParagraph 3 here\n\nLast line (will be italic)' 
+                              : 'Enter section content...'}
+                          />
+                          {section.type === 'features' && (
+                            <p className="text-[10px] text-gray-500 mt-1">
+                              Tip: Last paragraph will automatically appear in italic. Leave blank lines between paragraphs.
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -608,26 +776,26 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                          CTA Link
+                          CTA Link {section.type === 'text' && <span className="text-[10px] text-gray-500 normal-case">(or Google Maps embed URL)</span>}
                         </label>
                         <input
                           type="text"
                           value={section.ctaLink || ''}
                           onChange={(e) => handleSectionChange(index, "ctaLink", e.target.value)}
                           className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
-                          placeholder="/contact or https://..."
+                          placeholder={section.type === 'text' ? "/contact or https://maps.google.com/..." : "/contact or https://..."}
                         />
                       </div>
                       <div>
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                          CTA Text
+                          CTA Text {section.type === 'text' && <span className="text-[10px] text-gray-500 normal-case">(optional)</span>}
                         </label>
                         <input
                           type="text"
                           value={section.ctaText || ''}
                           onChange={(e) => handleSectionChange(index, "ctaText", e.target.value)}
                           className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
-                          placeholder="Button Text"
+                          placeholder="Button Text (leave empty for map embed)"
                         />
                       </div>
                     </div>
@@ -636,9 +804,12 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   {/* Edit images for Gallery section */}
                   {section.type === 'gallery' && (
                     <div className="bg-gray-50 border border-gray-200 p-4 rounded">
-                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-4">Instagram Gallery Images</h4>
-                      <div className="grid grid-cols-3 gap-4">
-                        {[0, 1, 2, 3, 4, 5].map((idx) => {
+                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-4">Gallery Images</h4>
+                      <p className="text-[10px] text-gray-600 mb-4">
+                        Upload images for gallery. For Instagram section (home page), use first 6 images.
+                      </p>
+                      <div className="grid grid-cols-4 gap-3">
+                        {Array.from({ length: 30 }).map((_, idx) => {
                           const imageUrl = section.images?.[idx] || '';
                           const isUploading = (section as any)[`_uploadingGalleryImage${idx}`];
                           
@@ -657,8 +828,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                                 ) : (
                                   <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="text-center">
-                                      <Upload className="mx-auto mb-1 text-gray-400" size={24} />
-                                      <span className="text-[9px] text-gray-500">Image {idx + 1}</span>
+                                      <Upload className="mx-auto mb-1 text-gray-400" size={20} />
+                                      <span className="text-[9px] text-gray-500">{idx + 1}</span>
                                     </div>
                                   </div>
                                 )}
@@ -670,15 +841,15 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                                   disabled={isUploading}
                                 />
                               </div>
-                              <div className="p-2 text-center">
-                                <span className="text-[10px] text-gray-600 uppercase tracking-wide">Image {idx + 1}</span>
+                              <div className="p-1 text-center">
+                                <span className="text-[9px] text-gray-600 uppercase tracking-wide">#{idx + 1}</span>
                               </div>
                             </div>
                           );
                         })}
                       </div>
                       <p className="text-[10px] text-blue-600 mt-3">
-                        💡 Click on any image to upload/replace. Recommended size: 750x750px (square)
+                        💡 Click on any image to upload/replace. Recommended: 750x750px (square) or larger.
                       </p>
                     </div>
                   )}
@@ -736,6 +907,86 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       <p className="text-[10px] text-blue-600 mt-3">
                         💡 Upload cover image first, then add menu pages. Click any image to upload/replace.
                       </p>
+                    </div>
+                  )}
+
+                  {/* Edit items for Contact Info section */}
+                  {section.type === 'contact_info' && (
+                    <div className="bg-gray-50 border border-gray-200 p-4 rounded">
+                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-4 flex items-center justify-between">
+                        <span>Contact Information Items</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSections = [...sections];
+                            if (!newSections[index].items) newSections[index].items = [];
+                            newSections[index].items.push({ name: '', description: '', link: '' });
+                            setSections(newSections);
+                          }}
+                          className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                        >
+                          + Add Item
+                        </button>
+                      </h4>
+                      <p className="text-[10px] text-gray-600 mb-4">
+                        Add contact details like phone, email, address, social links etc. Use Name for label, Description for value, Link for URLs.
+                      </p>
+                      <div className="space-y-4">
+                        {section.items?.map((item: any, itemIdx: number) => (
+                          <div key={itemIdx} className="bg-white border border-gray-300 p-4 rounded relative">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newSections = [...sections];
+                                newSections[index].items = newSections[index].items?.filter((_: any, i: number) => i !== itemIdx);
+                                setSections(newSections);
+                              }}
+                              className="absolute top-2 right-2 text-red-400 hover:text-red-600"
+                              title="Remove Item"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-[10px] uppercase tracking-widest text-gray-600 mb-1">
+                                  Label/Name
+                                </label>
+                                <input
+                                  type="text"
+                                  value={item.name || ''}
+                                  onChange={(e) => handleItemChange(index, itemIdx, 'name', e.target.value)}
+                                  className="w-full bg-white border border-gray-300 p-2 text-sm focus:outline-none focus:border-blue-400 rounded"
+                                  placeholder="e.g., Phone, Email, Address"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase tracking-widest text-gray-600 mb-1">
+                                  Value/Description
+                                </label>
+                                <input
+                                  type="text"
+                                  value={item.description || ''}
+                                  onChange={(e) => handleItemChange(index, itemIdx, 'description', e.target.value)}
+                                  className="w-full bg-white border border-gray-300 p-2 text-sm focus:outline-none focus:border-blue-400 rounded"
+                                  placeholder="e.g., +1234567890, email@example.com"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase tracking-widest text-gray-600 mb-1">
+                                  Link (Optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={item.link || ''}
+                                  onChange={(e) => handleItemChange(index, itemIdx, 'link', e.target.value)}
+                                  className="w-full bg-white border border-gray-300 p-2 text-sm focus:outline-none focus:border-blue-400 rounded"
+                                  placeholder="https://... or /page"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -972,17 +1223,239 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     {section.type === 'hero' && '⭐ Hero: 1 image, heading, subheading only (no button)'}
                     {section.type === 'features' && '🏢 Venue Grid: Upper heading (caps), heading, 4 paragraphs (last is italic) - Venue cards shown above'}
                     {section.type === 'parallax' && '🖼️ Parallax: 1 background image, heading, content text'}
-                    {section.type === 'text' && '📝 Text Block: Heading, content with optional CTA button'}
+                    {section.type === 'text' && '📝 Text Block: Heading, subheading, content with optional CTA button OR Google Maps embed. Image upload shows only if section has an image in database.'}
                     {section.type === 'philosophy' && '🎨 Philosophy: Heading (caps), 2 philosophy paragraphs, Art title + 3 paragraphs, CTA button'}
-                    {section.type === 'gallery' && '📸 Instagram Gallery: Heading, subheading, Instagram link, 6 gallery images'}
+                    {section.type === 'gallery' && '📸 Gallery: Heading, subheading, Instagram link, up to 30 images (use first 6 for Instagram section)'}
                     {section.type === 'menu' && '🍽️ Menu: Items managed via seed file'}
                     {section.type === 'menu-category' && '📋 Menu Category: Heading (category name), description, 1 cover image + up to 9 menu page images'}
+                    {section.type === 'contact_info' && '📞 Contact Info: Add items with Name (label), Description (value), Link (optional URL). Use for phone, email, address, social links.'}
                   </div>
                 </div>
               </div>
             </div>
           );
           })}
+
+          {/* Menu Sections - Tabbed Interface */}
+          {sections.filter(s => s.type === 'menu').length > 0 && (
+            <div className="bg-white p-6 border-2 border-orange-300 relative shadow-sm">
+              <div className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 p-4 rounded">
+                <span className="text-sm uppercase tracking-widest text-orange-700 font-bold flex items-center gap-2">
+                  🍽️ <span>Menu Categories</span>
+                  <span className="text-xs bg-orange-200 px-2 py-1 rounded ml-auto">{sections.filter(s => s.type === 'menu').length} Tabs</span>
+                </span>
+              </div>
+
+              {/* Tab Controls */}
+              <div className="flex gap-2 mb-6 overflow-x-auto pb-2 border-b-2 border-gray-200">
+                {sections.filter(s => s.type === 'menu').map((menuSection, tabIndex) => (
+                  <button
+                    key={tabIndex}
+                    type="button"
+                    onClick={() => setActiveMenuTab(tabIndex)}
+                    className={`px-6 py-3 text-sm font-semibold uppercase tracking-wide transition-all border-b-4 whitespace-nowrap ${
+                      activeMenuTab === tabIndex
+                        ? 'border-orange-500 text-orange-700 bg-orange-50'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {menuSection.heading || `Tab ${tabIndex + 1}`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Active Tab Content */}
+              {sections.filter(s => s.type === 'menu').map((menuSection, tabIndex) => {
+                if (activeMenuTab !== tabIndex) return null;
+                const sectionIndex = sections.findIndex(s => s === menuSection);
+                const _items: any[] = menuSection._items || [];
+
+                return (
+                  <div key={tabIndex} className="space-y-6">
+                    {/* Tab Name */}
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2 font-semibold">
+                        Tab Name (Menu Category)
+                      </label>
+                      <input
+                        type="text"
+                        value={menuSection.heading || ''}
+                        onChange={(e) => handleSectionChange(sectionIndex, "heading", e.target.value)}
+                        className="w-full bg-[#faf9f6] border-2 border-orange-200 p-3 focus:outline-none focus:border-orange-400 transition-colors text-[var(--verde-heading)] font-semibold"
+                        placeholder="e.g., DINNER, COCKTAIL, WINE"
+                      />
+                    </div>
+
+                    {/* Subheading */}
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                        Subheading
+                      </label>
+                      <input
+                        type="text"
+                        value={menuSection.subheading || ''}
+                        onChange={(e) => handleSectionChange(sectionIndex, "subheading", e.target.value)}
+                        className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                        placeholder="e.g., Menu"
+                      />
+                    </div>
+
+                    {/* Menu Items - Simple Inputs */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] font-semibold">
+                          Menu Items
+                        </label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleAddMenuItem(sectionIndex, 'heading')}
+                            className="px-3 py-1.5 text-xs uppercase tracking-wide bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300 transition-colors"
+                          >
+                            + Section Heading
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddMenuItem(sectionIndex, 'item')}
+                            className="px-3 py-1.5 text-xs uppercase tracking-wide bg-green-100 text-green-700 hover:bg-green-200 border border-green-300 transition-colors"
+                          >
+                            + Menu Item
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddMenuItem(sectionIndex, 'divider')}
+                            className="px-3 py-1.5 text-xs uppercase tracking-wide bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300 transition-colors"
+                          >
+                            + Divider
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+                        {_items.length === 0 && (
+                          <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded">
+                            <p className="text-sm">No items yet.</p>
+                            <p className="text-xs mt-1">Use the buttons above to add section headings and menu items.</p>
+                          </div>
+                        )}
+
+                        {_items.map((item: any, itemIdx: number) => (
+                          <div key={itemIdx} className={`flex items-center gap-2 rounded ${
+                            item.type === 'heading' || item.type === 'h2' ? 'bg-purple-50 border border-purple-200 p-2' :
+                            item.type === 'divider' ? 'bg-gray-50 border border-gray-200 p-2' :
+                            item.type === 'html' ? 'bg-yellow-50 border border-yellow-300 p-2' :
+                            'bg-green-50 border border-green-200 p-2'
+                          }`}>
+                            <span className="text-[10px] text-gray-400 w-5 text-center flex-shrink-0">{itemIdx + 1}</span>
+
+                            {(item.type === 'heading' || item.type === 'h2') && (
+                              <input
+                                type="text"
+                                value={item.name || ''}
+                                onChange={(e) => handleMenuItemChange(sectionIndex, itemIdx, e.target.value)}
+                                className="flex-1 bg-white border border-purple-200 px-3 py-2 text-sm font-semibold uppercase tracking-wide focus:outline-none focus:border-purple-400 text-[var(--verde-heading)]"
+                                placeholder="Section Heading (e.g., STARTERS, MAINS)"
+                              />
+                            )}
+
+                            {item.type === 'item' && (
+                              <input
+                                type="text"
+                                value={item.name || ''}
+                                onChange={(e) => handleMenuItemChange(sectionIndex, itemIdx, e.target.value)}
+                                className="flex-1 bg-white border border-green-200 px-3 py-2 text-sm focus:outline-none focus:border-green-400 text-[var(--verde-heading)]"
+                                placeholder="Item name, description $price  (e.g., Salmon Tartare, yuzu, avocado 24)"
+                              />
+                            )}
+
+                            {item.type === 'divider' && (
+                              <div className="flex-1 flex items-center gap-2 px-2">
+                                <div className="flex-1 border-t border-dashed border-gray-400"></div>
+                                <span className="text-[10px] text-gray-400 uppercase tracking-widest">divider line</span>
+                                <div className="flex-1 border-t border-dashed border-gray-400"></div>
+                              </div>
+                            )}
+
+                            {item.type === 'html' && (
+                              <div className="flex-1 flex items-center gap-2 px-2">
+                                <span className="text-[11px] text-yellow-700">🔒 Complex layout block — auto-preserved (layout safe)</span>
+                              </div>
+                            )}
+
+                            <span className={`text-[9px] uppercase tracking-widest flex-shrink-0 w-14 text-center font-semibold ${
+                              item.type === 'heading' || item.type === 'h2' ? 'text-purple-500' :
+                              item.type === 'divider' ? 'text-gray-400' :
+                              item.type === 'html' ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>
+                              {item.type === 'h2' ? 'heading' : item.type}
+                            </span>
+
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Download Link & Button Text */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                          Download Link (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={menuSection.ctaLink || ''}
+                          onChange={(e) => handleSectionChange(sectionIndex, "ctaLink", e.target.value)}
+                          className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                          placeholder="/s/wine-menu.pdf"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                          Button Text
+                        </label>
+                        <input
+                          type="text"
+                          value={menuSection.ctaText || ''}
+                          onChange={(e) => handleSectionChange(sectionIndex, "ctaText", e.target.value)}
+                          className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                          placeholder="download menu"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Display Order */}
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                        Display Order
+                      </label>
+                      <input
+                        type="number"
+                        value={menuSection.order || sectionIndex + 1}
+                        onChange={(e) => handleSectionChange(sectionIndex, "order", parseInt(e.target.value))}
+                        className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                        min="1"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Lower numbers appear first (DINNER=3, COCKTAIL=4, WINE=5, DESSERT=6, SUNDAY BRUNCH=7).
+                      </p>
+                    </div>
+
+                    {/* Remove Tab */}
+                    <div className="pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSection(sectionIndex)}
+                        className="flex items-center gap-2 text-red-600 hover:text-red-800 text-xs uppercase tracking-widest"
+                      >
+                        <Trash2 size={14} /> Remove This Menu Tab
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
