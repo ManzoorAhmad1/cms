@@ -68,8 +68,8 @@ export default function Create() {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto min-h-screen">
-      <h1 className="text-3xl font-light text-[var(--verde-heading)] uppercase tracking-wider mb-8">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto min-h-screen">
+      <h1 className="text-2xl sm:text-3xl font-light text-[var(--verde-heading)] uppercase tracking-wider mb-6 sm:mb-8">
         Create New Page
       </h1>
       <form onSubmit={handleSubmit} className="space-y-8">

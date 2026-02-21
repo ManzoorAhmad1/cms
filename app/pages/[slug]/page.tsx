@@ -493,19 +493,33 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     setSaving(true);
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
+    // Strip ALL client-only (_-prefixed) fields recursively before saving
+    const stripClientFields = (obj: any): any => {
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+      const result: any = {};
+      for (const key of Object.keys(obj)) {
+        if (key.startsWith('_')) continue; // skip _uploading, _uploadingImage0, _uploadingGalleryImage*, etc.
+        if (key === 'items' && Array.isArray(obj[key])) {
+          result[key] = obj[key].map((item: any) => stripClientFields(item));
+        } else {
+          result[key] = obj[key];
+        }
+      }
+      return result;
+    };
+
     try {
       // For menu sections: convert _items → HTML, strip client-only fields
       const sectionsToSave = sections.map(section => {
         if (section.type === 'menu') {
           const { _items, ...rest } = section;
+          const cleaned = stripClientFields(rest);
           if (_items && _items.length > 0) {
-            return { ...rest, content: convertItemsToHTML(_items) };
+            return { ...cleaned, content: convertItemsToHTML(_items) };
           }
-          return rest;
+          return cleaned;
         }
-        // Strip any client-only fields from other sections too
-        const { _uploading, ...rest } = section;
-        return rest;
+        return stripClientFields(section);
       });
 
       const res = await fetch(`${API_URL}/pages/${id}`, {
@@ -535,16 +549,16 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
   return (
     <>
       <Toaster position="top-right" />
-      <div className="p-8 max-w-5xl mx-auto min-h-screen pb-32">
-      <div className="flex items-center justify-between mb-8">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto min-h-screen pb-32">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <Link 
           href="/"
           className="flex items-center gap-2 text-[var(--verde-text)] hover:text-[var(--verde-accent)] transition-colors text-sm uppercase tracking-widest"
         >
           <ArrowLeft size={16} /> Back to Pages
         </Link>
-        <h1 className="text-2xl font-light text-[var(--verde-heading)] uppercase tracking-wider">
-          Edit Page: <span className="font-medium">{title}</span>
+        <h1 className="text-base sm:text-xl lg:text-2xl font-light text-[var(--verde-heading)] uppercase tracking-wider">
+          Edit: <span className="font-medium">{title}</span>
         </h1>
       </div>
 
@@ -773,7 +787,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
 
                   {/* CTA - for text, gallery, philosophy only (NOT hero) */}
                   {['text', 'gallery', 'philosophy'].includes(section.type) && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
                           CTA Link {section.type === 'text' && <span className="text-[10px] text-gray-500 normal-case">(or Google Maps embed URL)</span>}
@@ -808,7 +822,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       <p className="text-[10px] text-gray-600 mb-4">
                         Upload images for gallery. For Instagram section (home page), use first 6 images.
                       </p>
-                      <div className="grid grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {Array.from({ length: 30 }).map((_, idx) => {
                           const imageUrl = section.images?.[idx] || '';
                           const isUploading = (section as any)[`_uploadingGalleryImage${idx}`];
@@ -861,7 +875,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       <p className="text-[10px] text-gray-600 mb-4">
                         First image is the cover, remaining images are menu pages shown in the carousel.
                       </p>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((idx) => {
                           const imageUrl = section.images?.[idx] || '';
                           const isUploading = (section as any) [`_uploadingMenuImage${idx}`];
@@ -946,7 +960,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             >
                               <Trash2 size={14} />
                             </button>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               <div>
                                 <label className="block text-[10px] uppercase tracking-widest text-gray-600 mb-1">
                                   Label/Name
@@ -1075,7 +1089,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       {/* Philosophy Images */}
                       <div className="border-t border-gray-300 mt-5 pt-5">
                         <h5 className="text-[10px] uppercase tracking-widest text-gray-600 mb-4">Background Images</h5>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Texture Image - images[0] */}
                           <div>
                             <label className="block text-[10px] uppercase tracking-widest text-green-600 mb-2">Texture Background</label>
@@ -1149,9 +1163,9 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       <div className="space-y-6">
                         {section.items.map((item: any, idx: number) => (
                           <div key={idx} className="bg-white border border-gray-300 p-4 rounded shadow-sm">
-                            <div className="flex gap-4">
+                            <div className="flex flex-col sm:flex-row gap-4">
                               {/* Image Upload */}
-                              <div className="flex-shrink-0" style={{ width: '120px' }}>
+                              <div className="flex-shrink-0 w-full sm:w-[120px]">
                                 <label className="block text-[10px] uppercase tracking-widest text-gray-600 mb-2">Image</label>
                                 <div className="relative aspect-video bg-gray-200 rounded overflow-hidden border-2 border-dashed border-gray-300 hover:border-blue-400 transition cursor-pointer">
                                   {item.image ? (
@@ -1217,6 +1231,21 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       </div>
                     </div>
                   )}
+
+                  {/* Display Order */}
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                      Display Order
+                      <span className="text-[10px] text-gray-400 normal-case ml-2 font-normal">(Controls section position on page — lower numbers appear first)</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={section.order ?? index + 1}
+                      onChange={(e) => handleSectionChange(index, "order", parseInt(e.target.value) || 1)}
+                      className="w-32 bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                      min="1"
+                    />
+                  </div>
 
                   {/* Instructions based on type */}
                   <div className="bg-blue-50 border border-blue-200 p-3 rounded text-xs text-blue-800">
@@ -1302,11 +1331,11 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
 
                     {/* Menu Items - Simple Inputs */}
                     <div>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex flex-wrap items-start sm:items-center gap-2 sm:gap-0 sm:justify-between mb-3">
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] font-semibold">
                           Menu Items
                         </label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={() => handleAddMenuItem(sectionIndex, 'heading')}
@@ -1397,7 +1426,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     </div>
 
                     {/* Download Link & Button Text */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
                           Download Link (Optional)
@@ -1459,7 +1488,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
         </div>
 
         {/* Footer Actions */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#e5e0d8] p-4 flex justify-end gap-4 shadow-lg z-50">
+        <div className="fixed bottom-0 left-0 lg:left-64 right-0 bg-white border-t border-[#e5e0d8] p-3 sm:p-4 flex justify-end gap-3 sm:gap-4 shadow-lg z-40">
           <Link
             href="/"
             className="px-6 py-3 border border-[#e5e0d8] text-[var(--verde-heading)] text-xs uppercase tracking-widest hover:bg-[#faf9f6] transition-colors"

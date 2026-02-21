@@ -20,21 +20,21 @@ export default async function Dashboard() {
   const pages = await getPages();
 
   return (
-    <div className="p-8 max-w-7xl mx-auto min-h-screen">
-      <div className="flex justify-between items-center mb-12">
-        <h1 className="text-4xl text-[var(--verde-heading)] uppercase tracking-wider font-light">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto min-h-screen">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 sm:mb-12">
+        <h1 className="text-2xl sm:text-4xl text-[var(--verde-heading)] uppercase tracking-wider font-light">
           CMS Dashboard
         </h1>
         <Link 
           href="/pages/create" 
-          className="bg-[var(--verde-accent)] hover:bg-[#7a3628] text-white px-6 py-3 rounded-none uppercase tracking-widest text-sm flex items-center gap-2 transition-all duration-300"
+          className="self-start sm:self-auto bg-[var(--verde-accent)] hover:bg-[#7a3628] text-white px-5 py-3 rounded-none uppercase tracking-widest text-sm flex items-center gap-2 transition-all duration-300"
         >
           <Plus size={18} />
           ADD NEW PAGE
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-8">
         {pages.map((page: any) => (
           <div key={page._id} className="bg-white p-8 shadow-sm border border-[#e5e0d8] hover:shadow-lg transition-all duration-500 group">
             <h2 className="text-2xl text-[var(--verde-heading)] mb-2 uppercase tracking-wide group-hover:text-[var(--verde-accent)] transition-colors">
@@ -51,7 +51,7 @@ export default async function Dashboard() {
         ))}
       </div>
       
-      <div className="mt-16 p-8 bg-white border border-[#e5e0d8]">
+      <div className="mt-8 sm:mt-16 p-4 sm:p-8 bg-white border border-[#e5e0d8]">
         <h3 className="text-[var(--verde-heading)] text-lg uppercase tracking-widest mb-4">Setup Guide</h3>
         <p className="text-[var(--verde-text)] text-sm leading-loose">
           1. Create a <strong>.env.local</strong> file in this folder.<br/>
