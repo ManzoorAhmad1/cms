@@ -1,42 +1,35 @@
 export const dynamic = 'force-dynamic';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest) {
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-
-    // Call backend auth API
-    const backendRes = await fetch(`${API_URL}/auth/login`, {
+    const body = await req.json();
+    const res = await fetch(`${BACKEND_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(body),
     });
 
-    const data = await backendRes.json();
+    const data = await res.json();
 
-    if (!backendRes.ok || !data.success) {
-      return NextResponse.json(
-        { success: false, message: data.message || 'Galat email ya password' },
-        { status: 401 }
-      );
+    if (!res.ok) {
+      return NextResponse.json({ error: data.message || 'Login failed' }, { status: res.status });
     }
 
-    // Store JWT in secure httpOnly cookie
-    const response = NextResponse.json({ success: true, admin: data.admin });
+    const response = NextResponse.json({ message: 'Login successful' });
     response.cookies.set('cms_auth_token', data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
     });
 
     return response;
-  } catch (err) {
-    console.error('CMS Login error:', err);
-    return NextResponse.json({ success: false, message: 'Backend se connect nahi ho saka' }, { status: 500 });
+  } catch (error) {
+    console.error('Login error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
