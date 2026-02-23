@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Edit } from "lucide-react";
+import { Edit } from "lucide-react";
 
 async function getPages() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -25,13 +25,7 @@ export default async function Dashboard() {
         <h1 className="text-2xl sm:text-4xl text-[var(--verde-heading)] uppercase tracking-wider font-light">
           CMS Dashboard
         </h1>
-        <Link 
-          href="/pages/create" 
-          className="self-start sm:self-auto bg-[var(--verde-accent)] hover:bg-[#7a3628] text-white px-5 py-3 rounded-none uppercase tracking-widest text-sm flex items-center gap-2 transition-all duration-300"
-        >
-          <Plus size={18} />
-          ADD NEW PAGE
-        </Link>
+{/* New Page button hidden — route /pages/create still accessible */}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-8">

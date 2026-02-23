@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Plus, LayoutTemplate, Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutTemplate, Menu, X, Settings, LogOut } from "lucide-react";
 
 export default function Sidebar() {
   const [pages, setPages] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const fetchPages = async () => {
@@ -29,6 +30,15 @@ export default function Sidebar() {
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  };
+
+  // Hide sidebar on login page — AFTER all hooks (React rules)
+  if (pathname === '/login') return null;
 
   return (
     <>
@@ -115,14 +125,29 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        {/* New Page */}
-        <div className="p-4 border-t border-[#e5e0d8] flex-shrink-0">
+        {/* Bottom area: New Page + Settings + Logout */}
+        <div className="p-4 border-t border-[#e5e0d8] flex-shrink-0 space-y-2">
+{/* New Page button hidden — route /pages/create still accessible */}
+
+          {/* Settings */}
           <Link
-            href="/pages/create"
-            className="flex items-center justify-center gap-2 w-full bg-[var(--verde-heading)] text-[#f3ede2] py-3 text-xs uppercase tracking-widest hover:bg-[#1a1a1a] transition-colors"
+            href="/settings"
+            className={`flex items-center gap-2 w-full px-4 py-2.5 text-xs uppercase tracking-widest border transition-colors ${
+              pathname === '/settings'
+                ? 'border-[var(--verde-accent)] text-[var(--verde-accent)] bg-[#efebe5]'
+                : 'border-[#e5e0d8] text-[var(--verde-text)] hover:border-[var(--verde-accent)] hover:text-[var(--verde-accent)] hover:bg-[#efebe5]'
+            }`}
           >
-            <Plus size={16} /> New Page
+            <Settings size={14} /> Settings
           </Link>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 w-full px-4 py-2.5 text-xs uppercase tracking-widest border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 transition-colors"
+          >
+            <LogOut size={14} /> Logout
+          </button>
         </div>
       </aside>
     </>
