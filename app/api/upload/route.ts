@@ -1,4 +1,5 @@
 // @ts-nocheck
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { uploadFileToS3 } from "@/lib/s3";
 

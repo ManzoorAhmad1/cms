@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { NextResponse } from "next/server";
+// @ts-nocheckexport const dynamic = 'force-dynamic';import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import PageModel from "@/models/Page";
 
