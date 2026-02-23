@@ -50,16 +50,6 @@ export default async function Dashboard() {
           </div>
         ))}
       </div>
-      
-      <div className="mt-8 sm:mt-16 p-4 sm:p-8 bg-white border border-[#e5e0d8]">
-        <h3 className="text-[var(--verde-heading)] text-lg uppercase tracking-widest mb-4">Setup Guide</h3>
-        <p className="text-[var(--verde-text)] text-sm leading-loose">
-          1. Create a <strong>.env.local</strong> file in this folder.<br/>
-          2. Add your <strong>MONGODB_URI</strong> to connect the database.<br/>
-          3. Add your <strong>AWS_ACCESS_KEY_ID</strong>, <strong>AWS_SECRET_ACCESS_KEY</strong>, and <strong>AWS_S3_BUCKET_NAME</strong> for image uploads.<br/>
-          4. Run <strong>npm install</strong> and then <strong>npm run dev</strong> to start the CMS.
-        </p>
-      </div>
     </div>
   );
 }

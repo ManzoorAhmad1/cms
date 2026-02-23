@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2, Save, Upload } from "lucide-react";
+import { ArrowLeft, Trash2, Save, Upload } from "lucide-react";
 import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -602,13 +602,6 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
             <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--verde-heading)]">
               Content Sections
             </h2>
-            <button
-              type="button"
-              onClick={handleAddSection}
-              className="flex items-center gap-2 bg-[var(--verde-accent)] text-white px-4 py-2 text-xs uppercase tracking-widest hover:bg-[#a35e4d] transition-colors shadow-sm"
-            >
-              <Plus size={14} /> Add Section
-            </button>
           </div>
 
           {/* Render Non-Menu Sections First */}
@@ -720,7 +713,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             </span>
                           )}
                         </label>
-                        {section.content && section.content.includes('<') && (
+                        {section.type !== 'features' && section.content && section.content.includes('<') && (
                           <div className="flex gap-2">
                             <button
                               type="button"
@@ -748,8 +741,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                         )}
                       </div>
 
-                      {/* Show preview if content has HTML and preview mode is active */}
-                      {section.content && section.content.includes('<') && (!editMode[index] || editMode[index] === 'preview') ? (
+                      {/* Show preview if content has HTML and preview mode is active (not for features - always plain text) */}
+                      {section.type !== 'features' && section.content && section.content.includes('<') && (!editMode[index] || editMode[index] === 'preview') ? (
                         <div className="space-y-3">
                           <div 
                             className="w-full bg-white border-2 border-blue-200 p-6 min-h-[200px] max-h-[400px] overflow-y-auto"
