@@ -12,7 +12,7 @@ async function dbConnect() {
 
   if (!MONGODB_URI) {
     throw new Error(
-      "Please define the MONGODB_URI environment variable inside .env.local"
+      "Please define the MONGODB_URI environment variable"
     );
   }
 
@@ -21,14 +21,21 @@ async function dbConnect() {
   }
 
   if (!cached.promise) {
-    const opts = {
+    // Amazon DocumentDB requires retryWrites=false and specific TLS settings
+    // For MongoDB Atlas, these options are ignored safely
+    const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
+      retryWrites: false,          // Required for DocumentDB
+      serverSelectionTimeoutMS: 5000,
+      ...(process.env.DOCDB_TLS === 'true' && {
+        tls: true,
+        tlsAllowInvalidCertificates: false, // set true only for testing
+      }),
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
-    });
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((m) => m);
   }
+
   cached.conn = await cached.promise;
   return cached.conn;
 }
