@@ -1232,21 +1232,6 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     </div>
                   )}
 
-                  {/* Display Order */}
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                      Display Order
-                      <span className="text-[10px] text-gray-400 normal-case ml-2 font-normal">(Controls section position on page — lower numbers appear first)</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={section.order ?? index + 1}
-                      onChange={(e) => handleSectionChange(index, "order", parseInt(e.target.value) || 1)}
-                      className="w-32 bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
-                      min="1"
-                    />
-                  </div>
-
                   {/* Instructions based on type */}
                   <div className="bg-blue-50 border border-blue-200 p-3 rounded text-xs text-blue-800">
                     {section.type === 'hero' && '⭐ Hero: 1 image, heading, subheading only (no button)'}
@@ -1451,23 +1436,6 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                           placeholder="download menu"
                         />
                       </div>
-                    </div>
-
-                    {/* Display Order */}
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                        Display Order
-                      </label>
-                      <input
-                        type="number"
-                        value={menuSection.order || sectionIndex + 1}
-                        onChange={(e) => handleSectionChange(sectionIndex, "order", parseInt(e.target.value))}
-                        className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
-                        min="1"
-                      />
-                      <p className="text-[10px] text-gray-500 mt-1">
-                        Lower numbers appear first (DINNER=3, COCKTAIL=4, WINE=5, DESSERT=6, SUNDAY BRUNCH=7).
-                      </p>
                     </div>
 
                     {/* Remove Tab */}

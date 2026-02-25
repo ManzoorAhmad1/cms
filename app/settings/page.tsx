@@ -78,7 +78,7 @@ export default function SettingsPage() {
           Settings
         </h1>
         <p className="text-xs text-[var(--verde-text)] mt-1 opacity-60 uppercase tracking-widest">
-          Admin Credentials Manage Karen
+          Manage Admin Credentials
         </p>
       </div>
 
@@ -87,7 +87,7 @@ export default function SettingsPage() {
         <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[#f3ede2]">
           <ShieldCheck size={16} className="text-[var(--verde-accent)]" />
           <h2 className="text-xs uppercase tracking-widest text-[var(--verde-heading)] font-bold">
-            Credentials Tabdeel Karen
+            Change Credentials
           </h2>
         </div>
 
@@ -95,7 +95,7 @@ export default function SettingsPage() {
           {/* Current Password - Required */}
           <div>
             <label className="flex items-center gap-1 text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-              <Key size={11} /> Purana Password <span className="text-red-400">(zaruri)</span>
+              <Key size={11} /> Current Password <span className="text-red-400">(required)</span>
             </label>
             <div className="relative">
               <input
@@ -103,7 +103,7 @@ export default function SettingsPage() {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
-                placeholder="Current password daalen"
+                placeholder="Enter current password"
                 className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 pr-10 text-sm text-[var(--verde-heading)] focus:outline-none focus:border-[var(--verde-accent)] transition-colors"
               />
               <button
@@ -118,13 +118,13 @@ export default function SettingsPage() {
 
           <div className="border-t border-[#f3ede2] pt-5">
             <p className="text-[10px] uppercase tracking-widest text-[var(--verde-text)] opacity-50 mb-4">
-              Naya Email / Password (jo bhi badalna ho woh bhar dein)
+              New Email / Password (fill in what you want to change)
             </p>
 
             {/* New Email - Optional */}
             <div className="mb-4">
               <label className="flex items-center gap-1 text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                <Mail size={11} /> Naya Email <span className="text-gray-400 text-[10px] normal-case">(optional)</span>
+                <Mail size={11} /> New Email <span className="text-gray-400 text-[10px] normal-case">(optional)</span>
               </label>
               <input
                 type="email"
@@ -138,7 +138,7 @@ export default function SettingsPage() {
             {/* New Password - Optional */}
             <div className="mb-4">
               <label className="flex items-center gap-1 text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                <Key size={11} /> Naya Password <span className="text-gray-400 text-[10px] normal-case">(optional)</span>
+                <Key size={11} /> New Password <span className="text-gray-400 text-[10px] normal-case">(optional)</span>
               </label>
               <div className="relative">
                 <input
@@ -162,13 +162,13 @@ export default function SettingsPage() {
             {newPassword && (
               <div>
                 <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                  Password Confirm Karen
+                  Confirm Password
                 </label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Password dobara likhein"
+                  placeholder="Re-enter new password"
                   className={`w-full bg-[#faf9f6] border p-3 text-sm text-[var(--verde-heading)] focus:outline-none transition-colors ${
                     confirmPassword && confirmPassword !== newPassword
                       ? 'border-red-400 focus:border-red-400'
@@ -176,7 +176,7 @@ export default function SettingsPage() {
                   }`}
                 />
                 {confirmPassword && confirmPassword !== newPassword && (
-                  <p className="text-red-500 text-[10px] mt-1 uppercase tracking-wide">Passwords match nahi kar rahe</p>
+                  <p className="text-red-500 text-[10px] mt-1 uppercase tracking-wide">Passwords do not match</p>
                 )}
               </div>
             )}
@@ -200,7 +200,7 @@ export default function SettingsPage() {
               Logout
             </h3>
             <p className="text-[11px] text-[var(--verde-text)] opacity-60">
-              CMS se باہر نکلیں
+              Sign out of CMS
             </p>
           </div>
           <button
