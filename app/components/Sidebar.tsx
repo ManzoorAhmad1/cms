@@ -31,10 +31,9 @@ export default function Sidebar() {
     setOpen(false);
   }, [pathname]);
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
     router.push('/login');
-    router.refresh();
   };
 
   // Hide sidebar on login page — AFTER all hooks (React rules)

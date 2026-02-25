@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Key, Mail, ShieldCheck } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import { authFetch, setAuthToken, logout } from '@/lib/auth';
+import { authFetch, setTokens, logout } from '@/lib/auth';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -39,9 +39,9 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (data.success) {
-        // Update token with new one if returned
-        if (data.token) {
-          setAuthToken(data.token);
+        // Update tokens with new ones if returned
+        if (data.accessToken && data.refreshToken) {
+          setTokens(data.accessToken, data.refreshToken);
         }
         toast.success(data.message || 'Credentials updated successfully!');
         setCurrentPassword('');
@@ -63,10 +63,9 @@ export default function SettingsPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
     router.push('/login');
-    router.refresh();
   };
 
   return (

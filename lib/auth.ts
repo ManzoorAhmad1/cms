@@ -1,53 +1,96 @@
 /**
  * Auth Utility Functions for Verde CMS
- * Manages JWT token storage and retrieval using localStorage + cookie sync
+ * Access Token + Refresh Token pattern with localStorage
  */
 
-const COOKIE_NAME = 'cms_auth_token';
-const STORAGE_KEY = 'cms_auth_token';
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const ACCESS_TOKEN_KEY = 'cms_access_token';
+const REFRESH_TOKEN_KEY = 'cms_refresh_token';
 
 // Get backend API URL
 export const getBackendUrl = () => {
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 };
 
-// Get auth token from localStorage (primary) or cookie (fallback)
-export const getAuthToken = (): string | null => {
+// ─── Token Storage ─────────────────────────────────────────────────────────────
+
+export const getAccessToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  
-  // Try localStorage first
-  const token = localStorage.getItem(STORAGE_KEY);
-  if (token) return token;
-  
-  // Fallback to cookie
-  const match = document.cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-  return match ? match[1] : null;
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
 };
 
-// Set auth token in both localStorage and cookie (for middleware)
-export const setAuthToken = (token: string): void => {
+export const getRefreshToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+};
+
+export const setTokens = (accessToken: string, refreshToken: string): void => {
   if (typeof window === 'undefined') return;
-  
-  // Store in localStorage (persistent, reliable)
-  localStorage.setItem(STORAGE_KEY, token);
-  
-  // Also set cookie for middleware (server-side) access
-  const isSecure = window.location.protocol === 'https:';
-  const secureFlag = isSecure ? '; Secure' : '';
-  document.cookie = `${COOKIE_NAME}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax${secureFlag}`;
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 };
 
-// Clear auth token from both localStorage and cookie
-export const clearAuthToken = (): void => {
+export const setAccessToken = (accessToken: string): void => {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(STORAGE_KEY);
-  document.cookie = `${COOKIE_NAME}=; path=/; max-age=0`;
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
 };
 
-// Get auth headers for API requests
+export const clearTokens = (): void => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+};
+
+// ─── Token Refresh ─────────────────────────────────────────────────────────────
+
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+export const refreshAccessToken = async (): Promise<boolean> => {
+  // Prevent multiple simultaneous refresh requests
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return false;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${getBackendUrl()}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.accessToken) {
+        setAccessToken(data.accessToken);
+        return true;
+      }
+      
+      // Refresh failed - clear tokens
+      clearTokens();
+      return false;
+    } catch {
+      clearTokens();
+      return false;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
+// ─── Auth Headers ──────────────────────────────────────────────────────────────
+
 export const getAuthHeaders = (): Record<string, string> => {
-  const token = getAuthToken();
+  const token = getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -57,26 +100,50 @@ export const getAuthHeaders = (): Record<string, string> => {
   return headers;
 };
 
-// Authenticated fetch wrapper
+// ─── Authenticated Fetch with Auto-Refresh ─────────────────────────────────────
+
 export const authFetch = async (
   endpoint: string,
   options: RequestInit = {}
 ): Promise<Response> => {
   const url = endpoint.startsWith('http') ? endpoint : `${getBackendUrl()}${endpoint}`;
-  
-  const headers = {
-    ...getAuthHeaders(),
-    ...(options.headers || {}),
+
+  const makeRequest = async () => {
+    const headers = {
+      ...getAuthHeaders(),
+      ...(options.headers || {}),
+    };
+
+    return fetch(url, {
+      ...options,
+      headers,
+    });
   };
 
-  return fetch(url, {
-    ...options,
-    headers,
-  });
+  let response = await makeRequest();
+
+  // If 401 with TOKEN_EXPIRED, try to refresh
+  if (response.status === 401) {
+    const data = await response.clone().json().catch(() => ({}));
+    
+    if (data.code === 'TOKEN_EXPIRED') {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        // Retry the original request with new token
+        response = await makeRequest();
+      }
+    }
+  }
+
+  return response;
 };
 
-// Login function
-export const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
+// ─── Login ─────────────────────────────────────────────────────────────────────
+
+export const login = async (
+  email: string,
+  password: string
+): Promise<{ success: boolean; message?: string }> => {
   try {
     const res = await fetch(`${getBackendUrl()}/auth/login`, {
       method: 'POST',
@@ -86,38 +153,45 @@ export const login = async (email: string, password: string): Promise<{ success:
 
     const data = await res.json();
 
-    if (data.success && data.token) {
-      setAuthToken(data.token);
-      
-      // Debug logs
-      console.log('Token saved to localStorage:', !!localStorage.getItem('cms_auth_token'));
-      console.log('Cookie set:', document.cookie.includes('cms_auth_token'));
-      
-      // Small delay to ensure cookie is set before navigation
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+    if (data.success && data.accessToken && data.refreshToken) {
+      setTokens(data.accessToken, data.refreshToken);
       return { success: true };
     }
-    
+
     return { success: false, message: data.message || 'Login failed' };
   } catch {
     return { success: false, message: 'Network error' };
   }
 };
 
-// Logout function
-export const logout = async (): Promise<void> => {
-  // Clear via server-side (handles httpOnly if any)
-  try {
-    await fetch('/api/auth/logout', { method: 'POST' });
-  } catch {
-    // Ignore errors
-  }
-  // Also clear client-side
-  clearAuthToken();
+// ─── Logout ────────────────────────────────────────────────────────────────────
+
+export const logout = (): void => {
+  clearTokens();
 };
 
-// Check if authenticated (client-side)
+// ─── Auth Check ────────────────────────────────────────────────────────────────
+
 export const isAuthenticated = (): boolean => {
-  return !!getAuthToken();
+  return !!getAccessToken();
 };
+
+// Verify token is still valid (optional - for initial load)
+export const verifyAuth = async (): Promise<boolean> => {
+  const token = getAccessToken();
+  if (!token) return false;
+
+  try {
+    const res = await authFetch('/auth/verify');
+    if (res.ok) return true;
+    
+    // Token might be expired, authFetch auto-refreshes
+    return res.ok;
+  } catch {
+    return false;
+  }
+};
+
+// Legacy exports for backward compatibility
+export const getAuthToken = getAccessToken;
+export const setAuthToken = (token: string) => setAccessToken(token);
