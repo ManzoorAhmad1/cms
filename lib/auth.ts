@@ -1,9 +1,10 @@
 /**
  * Auth Utility Functions for Verde CMS
- * Manages JWT token storage and retrieval
+ * Manages JWT token storage and retrieval using localStorage + cookie sync
  */
 
 const COOKIE_NAME = 'cms_auth_token';
+const STORAGE_KEY = 'cms_auth_token';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 // Get backend API URL
@@ -11,25 +12,36 @@ export const getBackendUrl = () => {
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 };
 
-// Get auth token from cookie
+// Get auth token from localStorage (primary) or cookie (fallback)
 export const getAuthToken = (): string | null => {
-  if (typeof document === 'undefined') return null;
+  if (typeof window === 'undefined') return null;
+  
+  // Try localStorage first
+  const token = localStorage.getItem(STORAGE_KEY);
+  if (token) return token;
+  
+  // Fallback to cookie
   const match = document.cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
   return match ? match[1] : null;
 };
 
-// Set auth token cookie
+// Set auth token in both localStorage and cookie (for middleware)
 export const setAuthToken = (token: string): void => {
-  if (typeof document === 'undefined') return;
-  // Use Secure flag for HTTPS sites, SameSite=Lax for same-site navigation
-  const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+  if (typeof window === 'undefined') return;
+  
+  // Store in localStorage (persistent, reliable)
+  localStorage.setItem(STORAGE_KEY, token);
+  
+  // Also set cookie for middleware (server-side) access
+  const isSecure = window.location.protocol === 'https:';
   const secureFlag = isSecure ? '; Secure' : '';
   document.cookie = `${COOKIE_NAME}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax${secureFlag}`;
 };
 
-// Clear auth token cookie
+// Clear auth token from both localStorage and cookie
 export const clearAuthToken = (): void => {
-  if (typeof document === 'undefined') return;
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEY);
   document.cookie = `${COOKIE_NAME}=; path=/; max-age=0`;
 };
 
@@ -76,8 +88,14 @@ export const login = async (email: string, password: string): Promise<{ success:
 
     if (data.success && data.token) {
       setAuthToken(data.token);
-      // Debug: verify cookie was set
-      console.log('Token set, cookie check:', document.cookie.includes('cms_auth_token'));
+      
+      // Debug logs
+      console.log('Token saved to localStorage:', !!localStorage.getItem('cms_auth_token'));
+      console.log('Cookie set:', document.cookie.includes('cms_auth_token'));
+      
+      // Small delay to ensure cookie is set before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       return { success: true };
     }
     

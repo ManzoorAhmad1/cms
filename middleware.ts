@@ -11,6 +11,7 @@ async function verifyToken(token: string): Promise<boolean> {
     return true;
   } catch (err) {
     console.log('JWT Verify Error:', err instanceof Error ? err.message : 'Unknown error');
+    console.log('JWT_SECRET length:', JWT_SECRET.length);
     return false;
   }
 }
@@ -29,19 +30,24 @@ export async function middleware(request: NextRequest) {
   const isLoginPage = pathname === '/login';
   const token = request.cookies.get('cms_auth_token')?.value;
   
-  console.log('Middleware check - Path:', pathname, 'Has token:', !!token);
+  // Debug: log all cookies received
+  const allCookies = request.cookies.getAll();
+  console.log('All cookies:', allCookies.map(c => c.name).join(', '));
+  console.log('Middleware - Path:', pathname, 'Token exists:', !!token, 'Token length:', token?.length || 0);
 
   const isAuthenticated = token ? await verifyToken(token) : false;
   
-  console.log('Is authenticated:', isAuthenticated);
+  console.log('Auth result:', isAuthenticated);
 
   // Not logged in → redirect to login
   if (!isAuthenticated && !isLoginPage) {
+    console.log('Redirecting to login - not authenticated');
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   // Already logged in → redirect away from login
   if (isAuthenticated && isLoginPage) {
+    console.log('Redirecting to dashboard - already authenticated');
     return NextResponse.redirect(new URL('/', request.url));
   }
 
