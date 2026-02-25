@@ -9,7 +9,8 @@ async function verifyToken(token: string): Promise<boolean> {
     const secret = new TextEncoder().encode(JWT_SECRET);
     await jwtVerify(token, secret);
     return true;
-  } catch {
+  } catch (err) {
+    console.log('JWT Verify Error:', err instanceof Error ? err.message : 'Unknown error');
     return false;
   }
 }
@@ -27,8 +28,12 @@ export async function middleware(request: NextRequest) {
 
   const isLoginPage = pathname === '/login';
   const token = request.cookies.get('cms_auth_token')?.value;
+  
+  console.log('Middleware check - Path:', pathname, 'Has token:', !!token);
 
   const isAuthenticated = token ? await verifyToken(token) : false;
+  
+  console.log('Is authenticated:', isAuthenticated);
 
   // Not logged in → redirect to login
   if (!isAuthenticated && !isLoginPage) {

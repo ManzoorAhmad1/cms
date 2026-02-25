@@ -21,7 +21,10 @@ export const getAuthToken = (): string | null => {
 // Set auth token cookie
 export const setAuthToken = (token: string): void => {
   if (typeof document === 'undefined') return;
-  document.cookie = `${COOKIE_NAME}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+  // Use Secure flag for HTTPS sites, SameSite=Lax for same-site navigation
+  const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+  const secureFlag = isSecure ? '; Secure' : '';
+  document.cookie = `${COOKIE_NAME}=${token}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax${secureFlag}`;
 };
 
 // Clear auth token cookie
@@ -73,6 +76,8 @@ export const login = async (email: string, password: string): Promise<{ success:
 
     if (data.success && data.token) {
       setAuthToken(data.token);
+      // Debug: verify cookie was set
+      console.log('Token set, cookie check:', document.cookie.includes('cms_auth_token'));
       return { success: true };
     }
     
