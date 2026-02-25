@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { getBackendUrl, getAuthToken } from "@/lib/auth";
 
 export default function Create() {
   const [title, setTitle] = useState("");
@@ -23,11 +24,11 @@ export default function Create() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-
     try {
-        const response = await fetch(`${API_URL}/upload`, {
+        const token = getAuthToken();
+        const response = await fetch(`${getBackendUrl()}/upload`, {
             method: "POST",
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
             body: formData,
         });
         const data = await response.json();
@@ -48,12 +49,15 @@ export default function Create() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     try {
-        const res = await fetch(`${API_URL}/pages`, {
+        const token = getAuthToken();
+        const res = await fetch(`${getBackendUrl()}/pages`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
             body: JSON.stringify({ title, slug, sections }),
         });
         if (res.ok) {

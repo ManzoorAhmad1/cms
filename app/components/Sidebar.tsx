@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LayoutTemplate, Menu, X, Settings, LogOut } from "lucide-react";
+import { logout, getBackendUrl } from "@/lib/auth";
 
 export default function Sidebar() {
   const [pages, setPages] = useState<any[]>([]);
@@ -14,8 +15,7 @@ export default function Sidebar() {
   useEffect(() => {
     const fetchPages = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
-        const res = await fetch(`${API_URL}/pages`);
+        const res = await fetch(`${getBackendUrl()}/pages`);
         if (!res.ok) return;
         const data = await res.json();
         setPages(data.pages || []);
@@ -32,7 +32,7 @@ export default function Sidebar() {
   }, [pathname]);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await logout();
     router.push('/login');
     router.refresh();
   };

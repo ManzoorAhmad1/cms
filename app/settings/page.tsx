@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Key, Mail, ShieldCheck } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { authFetch, setAuthToken, logout } from '@/lib/auth';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -31,20 +32,28 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await authFetch('/auth/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newEmail, newPassword }),
       });
       const data = await res.json();
 
       if (data.success) {
+        // Update token with new one if returned
+        if (data.token) {
+          setAuthToken(data.token);
+        }
         toast.success(data.message || 'Credentials update ho gaye!');
         setCurrentPassword('');
         setNewEmail('');
         setNewPassword('');
         setConfirmPassword('');
       } else {
+        if (res.status === 401) {
+          toast.error('Session expired. Please login again.');
+          router.push('/login');
+          return;
+        }
         toast.error(data.message || 'Kuch ghalat ho gaya');
       }
     } catch {
@@ -55,7 +64,7 @@ export default function SettingsPage() {
   };
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await logout();
     router.push('/login');
     router.refresh();
   };

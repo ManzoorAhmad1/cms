@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LayoutTemplate, Lock } from 'lucide-react';
+import { login } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,26 +18,16 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+    const result = await login(email, password);
 
-      const data = await res.json();
-
-      if (data.success || data.message === 'Login successful') {
-        router.push('/');
-        router.refresh();
-      } else {
-        setError(data.error || data.message || 'Login failed');
-      }
-    } catch {
-      setError('Network error. Server se connect nahi ho saka.');
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      router.push('/');
+      router.refresh();
+    } else {
+      setError(result.message || 'Galat email ya password hai');
     }
+    
+    setLoading(false);
   };
 
   return (

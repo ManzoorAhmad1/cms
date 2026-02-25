@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Trash2, Save, Upload } from "lucide-react";
 import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
+import { getBackendUrl, getAuthHeaders, getAuthToken } from "@/lib/auth";
 
 // @ts-ignore
 export default function EditPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -23,8 +24,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
   useEffect(() => {
     const fetchPage = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-        const res = await fetch(`${API_URL}/pages/${pageSlug}`);
+        const res = await fetch(`${getBackendUrl()}/pages/${pageSlug}`);
         if (!res.ok) throw new Error("Failed to fetch page");
         const data = await res.json();
         
@@ -201,11 +201,12 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     setSaving(true);
     const formData = new FormData();
     formData.append("file", file);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     try {
-      const response = await fetch(`${API_URL}/upload`, {
+      const token = getAuthToken();
+      const response = await fetch(`${getBackendUrl()}/upload`, {
         method: "POST",
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
       const data = await response.json();
@@ -264,11 +265,12 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     setSaving(true);
     const formData = new FormData();
     formData.append("file", file);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     try {
-      const response = await fetch(`${API_URL}/upload`, {
+      const token = getAuthToken();
+      const response = await fetch(`${getBackendUrl()}/upload`, {
         method: "POST",
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
       const data = await response.json();
@@ -327,11 +329,12 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     setSaving(true);
     const formData = new FormData();
     formData.append("file", file);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     try {
-      const response = await fetch(`${API_URL}/upload`, {
+      const token = getAuthToken();
+      const response = await fetch(`${getBackendUrl()}/upload`, {
         method: "POST",
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
       const data = await response.json();
@@ -387,11 +390,12 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     setSaving(true);
     const formData = new FormData();
     formData.append("file", file);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     try {
-      const response = await fetch(`${API_URL}/upload`, {
+      const token = getAuthToken();
+      const response = await fetch(`${getBackendUrl()}/upload`, {
         method: "POST",
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
       const data = await response.json();
@@ -442,11 +446,11 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     const formData = new FormData();
     formData.append("file", file);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-
     try {
-      const response = await fetch(`${API_URL}/upload`, {
+      const token = getAuthToken();
+      const response = await fetch(`${getBackendUrl()}/upload`, {
         method: "POST",
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
       const data = await response.json();
@@ -491,7 +495,6 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
     // Strip ALL client-only (_-prefixed) fields recursively before saving
     const stripClientFields = (obj: any): any => {
@@ -522,9 +525,13 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
         return stripClientFields(section);
       });
 
-      const res = await fetch(`${API_URL}/pages/${id}`, {
+      const token = getAuthToken();
+      const res = await fetch(`${getBackendUrl()}/pages/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ title, slug, sections: sectionsToSave }),
       });
 

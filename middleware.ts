@@ -17,7 +17,7 @@ async function verifyToken(token: string): Promise<boolean> {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Allow API auth routes always
+  // Allow API auth routes (logout)
   if (pathname.startsWith('/api/auth')) return NextResponse.next();
 
   // Allow static assets
