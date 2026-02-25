@@ -26,11 +26,11 @@ export default function LoginPage() {
 
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success || data.message === 'Login successful') {
         router.push('/');
         router.refresh();
       } else {
-        setError(data.message || 'Login failed');
+        setError(data.error || data.message || 'Login failed');
       }
     } catch {
       setError('Network error. Server se connect nahi ho saka.');

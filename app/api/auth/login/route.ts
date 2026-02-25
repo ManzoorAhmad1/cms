@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: data.message || 'Login failed' }, { status: res.status });
     }
 
-    const response = NextResponse.json({ message: 'Login successful' });
+    const response = NextResponse.json({ success: true, message: 'Login successful' });
     response.cookies.set('cms_auth_token', data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
