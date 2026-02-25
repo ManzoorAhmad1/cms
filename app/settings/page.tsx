@@ -22,11 +22,11 @@ export default function SettingsPage() {
     e.preventDefault();
 
     if (newPassword && newPassword !== confirmPassword) {
-      toast.error('Naya password aur confirm password match nahi kar rahe');
+      toast.error('New password and confirm password do not match');
       return;
     }
     if (newPassword && newPassword.length < 6) {
-      toast.error('Password kam az kam 6 characters ka hona chahiye');
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
@@ -43,7 +43,7 @@ export default function SettingsPage() {
         if (data.token) {
           setAuthToken(data.token);
         }
-        toast.success(data.message || 'Credentials update ho gaye!');
+        toast.success(data.message || 'Credentials updated successfully!');
         setCurrentPassword('');
         setNewEmail('');
         setNewPassword('');
@@ -54,7 +54,7 @@ export default function SettingsPage() {
           router.push('/login');
           return;
         }
-        toast.error(data.message || 'Kuch ghalat ho gaya');
+        toast.error(data.message || 'Something went wrong');
       }
     } catch {
       toast.error('Server error');

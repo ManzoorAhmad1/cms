@@ -24,7 +24,7 @@ export default function LoginPage() {
       router.push('/');
       router.refresh();
     } else {
-      setError(result.message || 'Galat email ya password hai');
+      setError(result.message || 'Invalid email or password');
     }
     
     setLoading(false);
