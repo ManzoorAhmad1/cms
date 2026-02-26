@@ -21,7 +21,6 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
   const [seoDescription, setSeoDescription] = useState("");
   const [sections, setSections] = useState<any[]>([]);
   const [activeMenuTab, setActiveMenuTab] = useState(0); // For CMS menu tab navigation
-  const [editMode, setEditMode] = useState<{[key: number]: 'preview' | 'html'}>({});
 
   useEffect(() => {
     const fetchPage = async () => {
@@ -777,7 +776,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   {/* Content - for most types (not hero, not gallery, not philosophy) */}
                   {!['gallery', 'hero', 'philosophy'].includes(section.type) && (
                     <div>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="mb-3">
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] font-semibold">
                           Content
                           {section.type === 'features' && (
@@ -786,59 +785,65 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             </span>
                           )}
                         </label>
-                        {section.type !== 'features' && section.content && section.content.includes('<') && (
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditMode({...editMode, [index]: 'preview'})}
-                              className={`px-3 py-1.5 text-xs uppercase tracking-wide transition-colors ${
-                                (!editMode[index] || editMode[index] === 'preview')
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                              }`}
-                            >
-                              👁️ Preview
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditMode({...editMode, [index]: 'html'})}
-                              className={`px-3 py-1.5 text-xs uppercase tracking-wide transition-colors ${
-                                editMode[index] === 'html'
-                                  ? 'bg-orange-600 text-white'
-                                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                              }`}
-                            >
-                              ⚙️ HTML
-                            </button>
-                          </div>
-                        )}
                       </div>
 
-                      {/* Show preview if content has HTML and preview mode is active (not for features - always plain text) */}
-                      {section.type !== 'features' && section.content && section.content.includes('<') && (!editMode[index] || editMode[index] === 'preview') ? (
-                        <div className="space-y-3">
-                          <div 
-                            className="w-full bg-white border-2 border-blue-200 p-6 min-h-[200px] max-h-[400px] overflow-y-auto"
-                            style={{ 
-                              fontFamily: 'Georgia, serif',
-                              fontSize: '14px',
-                              lineHeight: '1.8'
+                      {section.type === 'text' ? (
+                        /* Line-by-line inputs — one input per line, no HTML tags visible */
+                        <div className="space-y-2">
+                          {(section.content || '').split(/<br\s*\/?>|\n/).map((rawLine: string, lineIdx: number) => {
+                            const plainLine = rawLine.replace(/<[^>]*>/g, '').trim();
+                            return (
+                              <div key={lineIdx} className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={plainLine}
+                                  onChange={(e) => {
+                                    const lines = (section.content || '')
+                                      .split(/<br\s*\/?>|\n/)
+                                      .map((l: string) => l.replace(/<[^>]*>/g, '').trim());
+                                    lines[lineIdx] = e.target.value;
+                                    handleSectionChange(index, "content", lines.join('<br/>'));
+                                  }}
+                                  className="flex-1 bg-[#faf9f6] border border-[#e5e0d8] px-3 py-2 text-sm focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                                  placeholder={`Line ${lineIdx + 1}`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const lines = (section.content || '')
+                                      .split(/<br\s*\/?>|\n/)
+                                      .map((l: string) => l.replace(/<[^>]*>/g, '').trim());
+                                    lines.splice(lineIdx, 1);
+                                    handleSectionChange(index, "content", lines.join('<br/>'));
+                                  }}
+                                  className="text-red-400 hover:text-red-600 text-sm flex-shrink-0 w-6 text-center"
+                                  title="Remove line"
+                                >✕</button>
+                              </div>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const lines = (section.content || '')
+                                .split(/<br\s*\/?>|\n/)
+                                .map((l: string) => l.replace(/<[^>]*>/g, '').trim());
+                              lines.push('');
+                              handleSectionChange(index, "content", lines.join('<br/>'));
                             }}
-                            dangerouslySetInnerHTML={{ __html: section.content }}
-                          />
-                          <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                            👁️ <strong>Preview Mode:</strong> Switch to HTML mode to edit.
-                          </p>
+                            className="text-xs text-gray-500 hover:text-gray-700 border border-dashed border-gray-300 px-3 py-1.5 w-full text-center mt-1"
+                          >+ Add Line</button>
                         </div>
                       ) : (
+                        /* Textarea for features / other section types */
                         <div className="space-y-2">
                           <textarea
                             value={section.content || ''}
                             onChange={(e) => handleSectionChange(index, "content", e.target.value)}
                             rows={section.type === 'features' ? 12 : 6}
                             className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-4 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)] leading-relaxed font-mono text-sm"
-                            placeholder={section.type === 'features' 
-                              ? 'Paragraph 1 here\n\nParagraph 2 here\n\nParagraph 3 here\n\nLast line (will be italic)' 
+                            placeholder={section.type === 'features'
+                              ? 'Paragraph 1 here\n\nParagraph 2 here\n\nParagraph 3 here\n\nLast line (will be italic)'
                               : 'Enter section content...'}
                           />
                           {section.type === 'features' && (
@@ -1439,12 +1444,14 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             )}
 
                             {item.type === 'item' && (
-                              <input
-                                type="text"
-                                value={item.name || ''}
-                                onChange={(e) => handleMenuItemChange(sectionIndex, itemIdx, e.target.value)}
-                                className="flex-1 bg-white border border-green-200 px-3 py-2 text-sm focus:outline-none focus:border-green-400 text-[var(--verde-heading)]"
-                                placeholder="Item name, description $price  (e.g., Salmon Tartare, yuzu, avocado 24)"
+                              <div
+                                key={`item-${sectionIndex}-${itemIdx}-${item.name?.length || 0}`}
+                                contentEditable
+                                suppressContentEditableWarning
+                                dangerouslySetInnerHTML={{ __html: item.name || '' }}
+                                onBlur={(e) => handleMenuItemChange(sectionIndex, itemIdx, e.currentTarget.innerHTML)}
+                                className="flex-1 bg-white border border-green-200 px-3 py-2 text-sm focus:outline-none focus:border-green-400 text-[var(--verde-heading)] min-h-[36px] outline-none"
+                                data-placeholder="Item name, description $price  (e.g., Salmon Tartare, yuzu, avocado 24)"
                               />
                             )}
 
