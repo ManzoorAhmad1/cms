@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
   const [savingSite, setSavingSite] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   // Admin credentials state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -31,6 +32,7 @@ export default function SettingsPage() {
   // Fetch site settings on mount
   useEffect(() => {
     const fetchSettings = async () => {
+      setLoadingSettings(true);
       try {
         const res = await fetch(`${getBackendUrl()}/settings`);
         if (res.ok) {
@@ -46,6 +48,8 @@ export default function SettingsPage() {
         }
       } catch (e) {
         console.error('Failed to fetch site settings', e);
+      } finally {
+        setLoadingSettings(false);
       }
     };
     fetchSettings();
@@ -153,6 +157,9 @@ export default function SettingsPage() {
           </h2>
         </div>
 
+        {loadingSettings ? (
+          <div className="text-center py-8 text-[var(--verde-text)] text-sm">Loading settings...</div>
+        ) : (
         <form onSubmit={handleSaveSiteSettings} className="space-y-5">
           {/* Site Title */}
           <div>
@@ -247,6 +254,7 @@ export default function SettingsPage() {
             {savingSite ? 'Saving...' : 'Save Site Settings'}
           </button>
         </form>
+        )}
       </div>
 
       {/* Change Credentials Card */}
