@@ -17,6 +17,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
+  const [seoTitle, setSeoTitle] = useState("");
+  const [seoDescription, setSeoDescription] = useState("");
   const [sections, setSections] = useState<any[]>([]);
   const [activeMenuTab, setActiveMenuTab] = useState(0); // For CMS menu tab navigation
   const [editMode, setEditMode] = useState<{[key: number]: 'preview' | 'html'}>({});
@@ -32,6 +34,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
           setId(data.page._id);
           setTitle(data.page.title);
           setSlug(data.page.slug);
+          setSeoTitle(data.page.seoTitle || '');
+          setSeoDescription(data.page.seoDescription || '');
           setSections(data.page.sections || []);
         }
       } catch (error) {
@@ -532,7 +536,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
           "Content-Type": "application/json",
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ title, slug, sections: sectionsToSave }),
+        body: JSON.stringify({ title, slug, seoTitle, seoDescription, sections: sectionsToSave }),
       });
 
       if (res.ok) {
@@ -601,6 +605,68 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
               />
             </div>
           </div>
+        </div>
+
+        {/* SEO Metadata */}
+        <div className="bg-white p-6 border border-[#e5e0d8] shadow-sm">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--verde-heading)] mb-6 border-b border-[#f3ede2] pb-2">
+            🔍 SEO Metadata
+          </h2>
+          <p className="text-[11px] text-gray-500 mb-4">
+            These fields control how your page appears in search engine results (Google, Bing, etc.)
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                SEO Title <span className="text-[10px] text-gray-400 normal-case">(appears in browser tab & search results)</span>
+              </label>
+              <input
+                type="text"
+                value={seoTitle}
+                onChange={(e) => setSeoTitle(e.target.value)}
+                className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                placeholder="e.g., Verde NYC - Mediterranean Restaurant in New York"
+                maxLength={70}
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                {seoTitle.length}/70 characters (recommended: 50-60)
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                SEO Description <span className="text-[10px] text-gray-400 normal-case">(meta description for search engines)</span>
+              </label>
+              <textarea
+                value={seoDescription}
+                onChange={(e) => setSeoDescription(e.target.value)}
+                className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)] leading-relaxed"
+                placeholder="e.g., Experience authentic Mediterranean cuisine at Verde NYC. Award-winning dishes, craft cocktails, and elegant ambiance in the heart of New York City."
+                rows={3}
+                maxLength={160}
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                {seoDescription.length}/160 characters (recommended: 150-160)
+              </p>
+            </div>
+          </div>
+          
+          {/* SEO Preview */}
+          {(seoTitle || seoDescription) && (
+            <div className="mt-6 pt-4 border-t border-[#f3ede2]">
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-3">Search Result Preview</p>
+              <div className="bg-white p-4 border border-gray-200 rounded max-w-xl">
+                <p className="text-[#1a0dab] text-lg leading-tight hover:underline cursor-pointer truncate">
+                  {seoTitle || title || 'Page Title'}
+                </p>
+                <p className="text-[#006621] text-sm mt-1">
+                  verde-nyc.com/{slug || 'page-url'}
+                </p>
+                <p className="text-[#545454] text-sm mt-1 line-clamp-2">
+                  {seoDescription || 'Add a meta description to improve your search visibility...'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sections */}
