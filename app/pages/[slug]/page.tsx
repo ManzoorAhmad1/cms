@@ -184,69 +184,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     });
   };
 
-  const handlePhilosophyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, sectionIndex: number, imageIndex: number) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    const localPreviewUrl = URL.createObjectURL(file);
-    setSections(prevSections => {
-      const newSections = [...prevSections];
-      const images = [...(newSections[sectionIndex].images || [])];
-      images[imageIndex] = localPreviewUrl;
-      newSections[sectionIndex] = { 
-        ...newSections[sectionIndex], 
-        images,
-        [`_uploadingImage${imageIndex}`]: true 
-      };
-      return newSections;
-    });
-
-    setSaving(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const token = getAuthToken();
-      const response = await fetch(`${getBackendUrl()}/upload`, {
-        method: "POST",
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-        body: formData,
-      });
-      const data = await response.json();
-      if (data.url) {
-        URL.revokeObjectURL(localPreviewUrl);
-        setSections(prevSections => {
-          const newSections = [...prevSections];
-          const images = [...(newSections[sectionIndex].images || [])];
-          images[imageIndex] = data.url;
-          newSections[sectionIndex] = { 
-            ...newSections[sectionIndex], 
-            images,
-            [`_uploadingImage${imageIndex}`]: false 
-          };
-          return newSections;
-        });
-        toast.success("Image uploaded successfully");
-      }
-    } catch (error) {
-      console.error("Upload failed", error);
-      toast.error("Image upload failed");
-      URL.revokeObjectURL(localPreviewUrl);
-      setSections(prevSections => {
-        const newSections = [...prevSections];
-        const images = [...(newSections[sectionIndex].images || [])];
-        images[imageIndex] = '';
-        newSections[sectionIndex] = { 
-          ...newSections[sectionIndex], 
-          images,
-          [`_uploadingImage${imageIndex}`]: false 
-        };
-        return newSections;
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, sectionIndex: number, imageIndex: number) => {
     const file = e.target.files?.[0];
@@ -559,7 +497,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
   return (
     <>
       <Toaster position="top-right" />
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto min-h-screen pb-32">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto min-h-screen pb-48">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <Link 
           href="/"
@@ -567,9 +505,9 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
         >
           <ArrowLeft size={16} /> Back to Pages
         </Link>
-        <h1 className="text-base sm:text-xl lg:text-2xl font-light text-[var(--verde-heading)] uppercase tracking-wider">
+           <h3 className="text-base sm:text-xl lg:text-2xl font-light text-[var(--verde-heading)] uppercase tracking-wider">
           Edit: <span className="font-medium">{title}</span>
-        </h1>
+           </h3>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-12">
@@ -693,7 +631,6 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   {section.type === 'features' && '🏢 Venue Grid Section'}
                   {section.type === 'parallax' && '🖼️ Parallax Section'}
                   {section.type === 'text' && '📝 Text Block'}
-                  {section.type === 'philosophy' && '🎨 Philosophy Section'}
                   {section.type === 'gallery' && '📸 Instagram Gallery'}
                   {section.type === 'menu' && '🍽️ Menu Section'}
                   {section.type === 'menu-category' && '🍽️ Menu Category'}
@@ -773,8 +710,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     </div>
                   )}
 
-                  {/* Content - for most types (not hero, not gallery, not philosophy) */}
-                  {!['gallery', 'hero', 'philosophy'].includes(section.type) && (
+                  {/* Content - for most types (not hero, not gallery) */}
+                  {!['gallery', 'hero'].includes(section.type) && (
                     <div>
                       <div className="mb-3">
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] font-semibold">
@@ -843,12 +780,12 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             rows={section.type === 'features' ? 12 : 6}
                             className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-4 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)] leading-relaxed font-mono text-sm"
                             placeholder={section.type === 'features'
-                              ? 'Paragraph 1 here\n\nParagraph 2 here\n\nParagraph 3 here\n\nLast line (will be italic)'
+                              ? 'Paragraph 1 here\n\nParagraph 2 here\n\nParagraph 3 here\n\nLast line (will be  )'
                               : 'Enter section content...'}
                           />
                           {section.type === 'features' && (
                             <p className="text-[10px] text-gray-500 mt-1">
-                              Tip: Last paragraph will automatically appear in italic. Leave blank lines between paragraphs.
+                              Tip: Last paragraph will automatically appear in  . Leave blank lines between paragraphs.
                             </p>
                           )}
                         </div>
@@ -856,8 +793,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     </div>
                   )}
 
-                  {/* CTA - for text, gallery, philosophy only (NOT hero) */}
-                  {['text', 'gallery', 'philosophy'].includes(section.type) && (
+                  {/* CTA - for text, gallery only (NOT hero) */}
+                  {['text', 'gallery'].includes(section.type) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
@@ -1075,157 +1012,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     </div>
                   )}
 
-                  {/* Edit items for Philosophy section */}
-                  {section.type === 'philosophy' && section.items && section.items.length > 0 && (
-                    <div className="bg-gray-50 border border-gray-200 p-4 rounded">
-                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-4">Philosophy Content</h4>
-                      <div className="space-y-5">
-                        {/* Philosophy Part 1 - items[0] */}
-                        <div>
-                          <label className="block text-[10px] uppercase tracking-widest text-blue-600 mb-2">Philosophy Paragraph 1</label>
-                          <textarea
-                            value={section.items[0]?.description || ''}
-                            onChange={(e) => handleItemChange(index, 0, 'description', e.target.value)}
-                            rows={4}
-                            className="w-full bg-white border border-gray-300 p-3 text-sm focus:outline-none focus:border-blue-400 rounded leading-relaxed"
-                            placeholder="First philosophy paragraph..."
-                          />
-                        </div>
 
-                        {/* Philosophy Part 2 - items[1] */}
-                        <div>
-                          <label className="block text-[10px] uppercase tracking-widest text-blue-600 mb-2">Philosophy Paragraph 2</label>
-                          <textarea
-                            value={section.items[1]?.description || ''}
-                            onChange={(e) => handleItemChange(index, 1, 'description', e.target.value)}
-                            rows={4}
-                            className="w-full bg-white border border-gray-300 p-3 text-sm focus:outline-none focus:border-blue-400 rounded leading-relaxed"
-                            placeholder="Second philosophy paragraph..."
-                          />
-                        </div>
-
-                        <div className="border-t border-gray-300 my-4 pt-4">
-                          <h5 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3">Art & Culture Section</h5>
-                          
-                          {/* Art Title - items[2] */}
-                          <div className="mb-4">
-                            <label className="block text-[10px] uppercase tracking-widest text-purple-600 mb-2">Art & Culture Title</label>
-                            <input
-                              type="text"
-                              value={section.items[2]?.description || ''}
-                              onChange={(e) => handleItemChange(index, 2, 'description', e.target.value)}
-                              className="w-full bg-white border border-gray-300 p-2 text-sm focus:outline-none focus:border-purple-400 rounded"
-                              placeholder="ART & Culture"
-                            />
-                          </div>
-
-                          {/* Art Part 1 - items[3] */}
-                          <div className="mb-4">
-                            <label className="block text-[10px] uppercase tracking-widest text-purple-600 mb-2">Art Paragraph 1</label>
-                            <textarea
-                              value={section.items[3]?.description || ''}
-                              onChange={(e) => handleItemChange(index, 3, 'description', e.target.value)}
-                              rows={3}
-                              className="w-full bg-white border border-gray-300 p-3 text-sm focus:outline-none focus:border-purple-400 rounded leading-relaxed"
-                              placeholder="First art paragraph..."
-                            />
-                          </div>
-
-                          {/* Art Part 2 - items[4] */}
-                          <div className="mb-4">
-                            <label className="block text-[10px] uppercase tracking-widest text-purple-600 mb-2">Art Paragraph 2</label>
-                            <textarea
-                              value={section.items[4]?.description || ''}
-                              onChange={(e) => handleItemChange(index, 4, 'description', e.target.value)}
-                              rows={3}
-                              className="w-full bg-white border border-gray-300 p-3 text-sm focus:outline-none focus:border-purple-400 rounded leading-relaxed"
-                              placeholder="Second art paragraph..."
-                            />
-                          </div>
-
-                          {/* Art Part 3 - items[5] */}
-                          <div>
-                            <label className="block text-[10px] uppercase tracking-widest text-purple-600 mb-2">Art Paragraph 3</label>
-                            <textarea
-                              value={section.items[5]?.description || ''}
-                              onChange={(e) => handleItemChange(index, 5, 'description', e.target.value)}
-                              rows={3}
-                              className="w-full bg-white border border-gray-300 p-3 text-sm focus:outline-none focus:border-purple-400 rounded leading-relaxed"
-                              placeholder="Third art paragraph..."
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Philosophy Images */}
-                      <div className="border-t border-gray-300 mt-5 pt-5">
-                        <h5 className="text-[10px] uppercase tracking-widest text-gray-600 mb-4">Background Images</h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {/* Texture Image - images[0] */}
-                          <div>
-                            <label className="block text-[10px] uppercase tracking-widest text-green-600 mb-2">Texture Background</label>
-                            <div className="relative aspect-[4/3] bg-gray-200 rounded overflow-hidden border-2 border-dashed border-gray-300 hover:border-green-400 transition cursor-pointer">
-                              {section.images?.[0] ? (
-                                <>
-                                  <Image src={section.images[0]} alt="Texture Background" fill className="object-cover" unoptimized />
-                                  {(section as any)._uploadingImage0 && (
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="text-center">
-                                    <Upload className="mx-auto mb-1 text-gray-400" size={24} />
-                                    <span className="text-[9px] text-gray-500">Philosophy BG</span>
-                                  </div>
-                                </div>
-                              )}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handlePhilosophyImageUpload(e, index, 0)}
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                disabled={(section as any)._uploadingImage0}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Art Image - images[1] */}
-                          <div>
-                            <label className="block text-[10px] uppercase tracking-widest text-green-600 mb-2">Art Section Image</label>
-                            <div className="relative aspect-[4/3] bg-gray-200 rounded overflow-hidden border-2 border-dashed border-gray-300 hover:border-green-400 transition cursor-pointer">
-                              {section.images?.[1] ? (
-                                <>
-                                  <Image src={section.images[1]} alt="Art Section Image" fill className="object-cover" unoptimized />
-                                  {(section as any)._uploadingImage1 && (
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="text-center">
-                                    <Upload className="mx-auto mb-1 text-gray-400" size={24} />
-                                    <span className="text-[9px] text-gray-500">Art Image</span>
-                                  </div>
-                                </div>
-                              )}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handlePhilosophyImageUpload(e, index, 1)}
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                disabled={(section as any)._uploadingImage1}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Display items for Features/Venue Grid section */}
                   {section.type === 'features' && section.items && section.items.length > 0 && (
@@ -1304,12 +1091,11 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   )}
 
                   {/* Instructions based on type */}
-                  <div className="bg-blue-50 border border-blue-200 p-3  mb-4 rounded text-xs text-blue-800">
+                  <div className="bg-blue-50 border border-blue-200 p-3 sm:mb:0 lg:!mb-10 rounded text-xs text-blue-800">
                     {section.type === 'hero' && '⭐ Hero: 1 image, heading, subheading only (no button)'}
-                    {section.type === 'features' && '🏢 Venue Grid: Upper heading (caps), heading, 4 paragraphs (last is italic) - Venue cards shown above'}
+                    {section.type === 'features' && '🏢 Venue Grid: Upper heading (caps), heading, 4 paragraphs (last is  ) - Venue cards shown above'}
                     {section.type === 'parallax' && '🖼️ Parallax: 1 background image, heading, content text'}
                     {section.type === 'text' && '📝 Text Block: Heading, subheading, content with optional CTA button OR Google Maps embed. Image upload shows only if section has an image in database.'}
-                    {section.type === 'philosophy' && '🎨 Philosophy: Heading (caps), 2 philosophy paragraphs, Art title + 3 paragraphs, CTA button'}
                     {section.type === 'gallery' && '📸 Gallery: Heading, subheading, Instagram link, up to 30 images (use first 6 for Instagram section)'}
                     {section.type === 'menu' && '🍽️ Menu: Items managed via seed file'}
                     {section.type === 'menu-category' && '📋 Menu Category: Heading (category name), description, 1 cover image + up to 9 menu page images'}

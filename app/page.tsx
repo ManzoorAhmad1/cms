@@ -22,9 +22,9 @@ export default async function Dashboard() {
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto min-h-screen">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 sm:mb-12">
-        <h1 className="text-2xl sm:text-4xl text-[var(--verde-heading)] uppercase tracking-wider font-light">
+           <h3 className="text-2xl sm:text-4xl text-[var(--verde-heading)] uppercase tracking-wider font-light">
           CMS Dashboard
-        </h1>
+           </h3>
 {/* New Page button hidden — route /pages/create still accessible */}
       </div>
 

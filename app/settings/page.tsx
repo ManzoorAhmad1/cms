@@ -140,9 +140,9 @@ export default function SettingsPage() {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-xl font-light uppercase tracking-wider text-[var(--verde-heading)]">
+           <h3 className="text-xl font-light uppercase tracking-wider text-[var(--verde-heading)]">
           Settings
-        </h1>
+           </h3>
         <p className="text-xs text-[var(--verde-text)] mt-1 opacity-60 uppercase tracking-widest">
           Manage Site & Admin Settings
         </p>

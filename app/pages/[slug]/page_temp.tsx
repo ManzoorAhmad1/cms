@@ -160,9 +160,9 @@ export default function EditPage({ params: paramsPromise }: { params: Promise<{ 
       {/* Header */}
       <div className="flex items-center justify-between mb-8 pb-8 border-b border-[#e5e0d8] sticky top-0 bg-[#faf9f6] z-10 pt-4">
         <div>
-          <h1 className="text-3xl font-light text-[var(--verde-heading)] uppercase tracking-wider mb-2">
+             <h3 className="text-3xl font-light text-[var(--verde-heading)] uppercase tracking-wider mb-2">
             {title}
-          </h1>
+             </h3>
           <p className="text-sm text-[var(--verde-text)] tracking-wide">/{slug}</p>
         </div>
         <div className="flex gap-4">
@@ -347,7 +347,7 @@ export default function EditPage({ params: paramsPromise }: { params: Promise<{ 
                       </label>
                    </div>
                    
-                   <p className="text-[10px] text-[#999] italic leading-tight">
+                   <p className="text-[10px] text-[#999]   leading-tight">
                      * Uploaded images are automatically saved to the server. Click 'Done Editing' to save text changes.
                    </p>
                 </div>
