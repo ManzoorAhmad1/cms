@@ -832,32 +832,62 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
 
                   {/* CTA - for text, gallery only (NOT hero) */}
                   {['text', 'gallery'].includes(section.type) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                          CTA Link {section.type === 'text' && <span className="text-[10px] text-gray-500 normal-case">(or Google Maps embed URL)</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={section.ctaLink || ''}
-                          onChange={(e) => handleSectionChange(index, "ctaLink", e.target.value)}
-                          className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
-                          placeholder={section.type === 'text' ? "/contact or https://maps.google.com/..." : "/contact or https://..."}
-                        />
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                            CTA Link {section.type === 'text' && <span className="text-[10px] text-gray-500 normal-case">(or Google Maps embed URL)</span>}
+                          </label>
+                          <input
+                            type="text"
+                            value={section.ctaLink || ''}
+                            onChange={(e) => handleSectionChange(index, "ctaLink", e.target.value)}
+                            className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                            placeholder={section.type === 'text' ? "/contact or https://maps.google.com/..." : "/contact or https://..."}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                            CTA Text {section.type === 'text' && <span className="text-[10px] text-gray-500 normal-case">(optional)</span>}
+                          </label>
+                          <input
+                            type="text"
+                            value={section.ctaText || ''}
+                            onChange={(e) => handleSectionChange(index, "ctaText", e.target.value)}
+                            className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                            placeholder="Button Text"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
-                          CTA Text {section.type === 'text' && <span className="text-[10px] text-gray-500 normal-case">(optional)</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={section.ctaText || ''}
-                          onChange={(e) => handleSectionChange(index, "ctaText", e.target.value)}
-                          className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
-                          placeholder="Button Text (leave empty for map embed)"
-                        />
+
+                      {/* Second CTA - for dinner party etc */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                            Second CTA Link <span className="text-[10px] text-gray-500 normal-case">(optional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={section.ctaLink2 || ''}
+                            onChange={(e) => handleSectionChange(index, "ctaLink2", e.target.value)}
+                            className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                            placeholder="tel:+16464068763"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+                            Second CTA Text <span className="text-[10px] text-gray-500 normal-case">(optional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={section.ctaText2 || ''}
+                            onChange={(e) => handleSectionChange(index, "ctaText2", e.target.value)}
+                            className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)]"
+                            placeholder="CALL US"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
 
                   {/* Edit images for Gallery section */}
