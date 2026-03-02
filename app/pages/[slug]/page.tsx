@@ -758,7 +758,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   </div>
 
                   {/* Subheading - for specific types */}
-                  {['hero', 'features', 'gallery'].includes(section.type) && (
+                  {['hero', 'features', 'gallery', 'text'].includes(section.type) && (
                     <div>
                       <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
                         Subheading
