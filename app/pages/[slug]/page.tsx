@@ -676,8 +676,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
             </h2>
           </div>
 
-          {/* Render Non-Menu Sections First */}
-          {sections.filter(s => s.type !== 'menu').map((section, originalIndex) => {
+          {/* Render Non-Menu Sections First (Disclaimer section hidden) */}
+          {sections.filter(s => s.type !== 'menu' && !(s.type === 'text' && s.heading === 'Disclaimer')).map((section, originalIndex) => {
             // Get the actual index in the sections array
             const index = sections.findIndex((s, i) => i >= 0 && s === section);
             const needsImage = ['hero', 'parallax'].includes(section.type) || 
@@ -1304,7 +1304,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   )}
 
                   {/* Instructions based on type */}
-                  <div className="bg-blue-50 border border-blue-200 p-3 rounded text-xs text-blue-800">
+                  <div className="bg-blue-50 border border-blue-200 p-3  mb-4 rounded text-xs text-blue-800">
                     {section.type === 'hero' && '⭐ Hero: 1 image, heading, subheading only (no button)'}
                     {section.type === 'features' && '🏢 Venue Grid: Upper heading (caps), heading, 4 paragraphs (last is italic) - Venue cards shown above'}
                     {section.type === 'parallax' && '🖼️ Parallax: 1 background image, heading, content text'}
@@ -1321,8 +1321,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
           );
           })}
 
-          {/* Menu Sections - Tabbed Interface */}
-          {sections.filter(s => s.type === 'menu').length > 0 && (
+          {/* Menu Sections - Tabbed Interface - TEMPORARILY HIDDEN */}
+          {false && sections.filter(s => s.type === 'menu').length > 0 && (
             <div className="bg-white p-6 border-2 border-orange-300 relative shadow-sm">
               <div className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 p-4 rounded">
                 <span className="text-sm uppercase tracking-widest text-orange-700 font-bold flex items-center gap-2">
