@@ -366,6 +366,17 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
+  const handleDeleteSectionImage = (sectionIndex: number, imageIndex: number) => {
+    const newSections = sections.map((sec, si) => {
+      if (si !== sectionIndex) return sec;
+      const images = [...(sec.images || [])];
+      images.splice(imageIndex, 1);
+      return { ...sec, images };
+    });
+    setSections(newSections);
+    savePageSilently(newSections);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -433,39 +444,66 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
+  // Strip ALL client-only (_-prefixed) fields recursively before saving
+  const stripClientFields = (obj: any): any => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+    const result: any = {};
+    for (const key of Object.keys(obj)) {
+      if (key.startsWith('_')) continue;
+      if (key === 'items' && Array.isArray(obj[key])) {
+        result[key] = obj[key].map((item: any) => stripClientFields(item));
+      } else {
+        result[key] = obj[key];
+      }
+    }
+    return result;
+  };
+
+  const buildSectionsToSave = (rawSections: any[]) =>
+    rawSections.map(section => {
+      if (section.type === 'menu') {
+        const { _items, ...rest } = section;
+        const cleaned = stripClientFields(rest);
+        if (_items && _items.length > 0) {
+          return { ...cleaned, content: convertItemsToHTML(_items) };
+        }
+        return cleaned;
+      }
+      return stripClientFields(section);
+    });
+
+  // Silent save — used internally (e.g. after image delete). Shows a small toast only on error.
+  const savePageSilently = async (rawSections: any[]) => {
+    if (!id) return;
+    setSaving(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`${getBackendUrl()}/pages/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ title, slug, seoTitle, seoDescription, sections: buildSectionsToSave(rawSections) }),
+      });
+      if (res.ok) {
+        toast.success("Image deleted & saved", { duration: 2000 });
+      } else {
+        const err = await res.json();
+        toast.error(`Save failed: ${err.message}`);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save after delete");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-
-    // Strip ALL client-only (_-prefixed) fields recursively before saving
-    const stripClientFields = (obj: any): any => {
-      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
-      const result: any = {};
-      for (const key of Object.keys(obj)) {
-        if (key.startsWith('_')) continue; // skip _uploading, _uploadingImage0, _uploadingGalleryImage*, etc.
-        if (key === 'items' && Array.isArray(obj[key])) {
-          result[key] = obj[key].map((item: any) => stripClientFields(item));
-        } else {
-          result[key] = obj[key];
-        }
-      }
-      return result;
-    };
-
     try {
-      // For menu sections: convert _items → HTML, strip client-only fields
-      const sectionsToSave = sections.map(section => {
-        if (section.type === 'menu') {
-          const { _items, ...rest } = section;
-          const cleaned = stripClientFields(rest);
-          if (_items && _items.length > 0) {
-            return { ...cleaned, content: convertItemsToHTML(_items) };
-          }
-          return cleaned;
-        }
-        return stripClientFields(section);
-      });
-
       const token = getAuthToken();
       const res = await fetch(`${getBackendUrl()}/pages/${id}`, {
         method: "PUT",
@@ -473,12 +511,11 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
           "Content-Type": "application/json",
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ title, slug, seoTitle, seoDescription, sections: sectionsToSave }),
+        body: JSON.stringify({ title, slug, seoTitle, seoDescription, sections: buildSectionsToSave(sections) }),
       });
 
       if (res.ok) {
         toast.success("Page Updated Successfully!");
-        // Stay on same page after saving
         router.refresh();
       } else {
         const errorData = await res.json();
@@ -826,35 +863,34 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   {/* Edit images for Gallery section */}
                   {section.type === 'gallery' && (
                     <div className="bg-gray-50 border border-gray-200 p-4 rounded">
-                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-4">Gallery Images</h4>
+                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-1">Gallery Images</h4>
                       <p className="text-[10px] text-gray-600 mb-4">
-                        Upload images for gallery. For Instagram section (home page), use first 6 images.
+                        {(section.images?.length || 0)} image{(section.images?.length || 0) !== 1 ? 's' : ''} · First 6 shown on home page Instagram section.
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {Array.from({ length: 30 }).map((_, idx) => {
-                          const imageUrl = section.images?.[idx] || '';
+                        {(section.images || []).map((imageUrl: string, idx: number) => {
                           const isUploading = (section as any)[`_uploadingGalleryImage${idx}`];
-                          
                           return (
                             <div key={idx} className="bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
                               <div className="relative aspect-square bg-gray-200 border-2 border-dashed border-gray-300 hover:border-blue-400 transition cursor-pointer">
-                                {imageUrl ? (
-                                  <>
-                                    <Image src={imageUrl} alt={`Gallery Image ${idx + 1}`} fill className="object-cover" unoptimized />
-                                    {isUploading && (
-                                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
-                                      </div>
-                                    )}
-                                  </>
-                                ) : (
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="text-center">
-                                      <Upload className="mx-auto mb-1 text-gray-400" size={20} />
-                                      <span className="text-[9px] text-gray-500">{idx + 1}</span>
+                                <>
+                                  <Image src={imageUrl} alt={`Gallery Image ${idx + 1}`} fill className="object-cover" unoptimized />
+                                  {isUploading && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
+                                  {!isUploading && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteSectionImage(index, idx); }}
+                                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center z-10 shadow-md"
+                                      title="Delete image"
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  )}
+                                </>
                                 <input
                                   type="file"
                                   accept="image/*"
@@ -869,9 +905,23 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             </div>
                           );
                         })}
+
+                        {/* Add new image button */}
+                        <div className="bg-white border-2 border-dashed border-blue-300 rounded shadow-sm overflow-hidden hover:border-blue-500 hover:bg-blue-50 transition cursor-pointer relative">
+                          <div className="relative aspect-square flex flex-col items-center justify-center gap-1">
+                            <span className="text-3xl text-blue-400 leading-none">+</span>
+                            <span className="text-[9px] text-blue-500 uppercase tracking-wide">Add Image</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleGalleryImageUpload(e, index, section.images?.length || 0)}
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                          </div>
+                        </div>
                       </div>
                       <p className="text-[10px] text-blue-600 mt-3">
-                        💡 Click on any image to upload/replace. Recommended: 750x750px (square) or larger.
+                        💡 Click on any image to replace it. Recommended: 750x750px (square) or larger.
                       </p>
                     </div>
                   )}
@@ -879,36 +929,35 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                   {/* Edit Menu Category section */}
                   {section.type === 'menu-category' && (
                     <div className="bg-gray-50 border border-gray-200 p-4 rounded">
-                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-4">Menu Category Images</h4>
+                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-1">Menu Category Images</h4>
                       <p className="text-[10px] text-gray-600 mb-4">
-                        First image is the cover, remaining images are menu pages shown in the carousel.
+                        {(section.images?.length || 0)} image{(section.images?.length || 0) !== 1 ? 's' : ''} · First image is the cover, rest are menu pages in the carousel.
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((idx) => {
-                          const imageUrl = section.images?.[idx] || '';
-                          const isUploading = (section as any) [`_uploadingMenuImage${idx}`];
+                        {(section.images || []).map((imageUrl: string, idx: number) => {
+                          const isUploading = (section as any)[`_uploadingMenuImage${idx}`];
                           const isCover = idx === 0;
-                          
                           return (
                             <div key={idx} className="bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
                               <div className="relative aspect-[3/4] bg-gray-200 border-2 border-dashed border-gray-300 hover:border-orange-400 transition cursor-pointer">
-                                {imageUrl ? (
-                                  <>
-                                    <Image src={imageUrl} alt={`Menu ${isCover ? 'Cover' : `Page ${idx}`}`} fill className="object-cover" unoptimized />
-                                    {isUploading && (
-                                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
-                                      </div>
-                                    )}
-                                  </>
-                                ) : (
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="text-center">
-                                      <Upload className="mx-auto mb-1 text-gray-400" size={20} />
-                                      <span className="text-[9px] text-gray-500">{isCover ? 'Cover' : `Page ${idx}`}</span>
+                                <>
+                                  <Image src={imageUrl} alt={`Menu ${isCover ? 'Cover' : `Page ${idx}`}`} fill className="object-cover" unoptimized />
+                                  {isUploading && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
+                                  {!isUploading && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteSectionImage(index, idx); }}
+                                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center z-10 shadow-md"
+                                      title="Delete image"
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  )}
+                                </>
                                 <input
                                   type="file"
                                   accept="image/*"
@@ -925,9 +974,30 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             </div>
                           );
                         })}
+
+                        {/* Add new menu image button */}
+                        <div className="bg-white border-2 border-dashed border-orange-300 rounded shadow-sm overflow-hidden hover:border-orange-500 hover:bg-orange-50 transition cursor-pointer relative">
+                          <div className="relative aspect-[3/4] flex flex-col items-center justify-center gap-1">
+                            <span className="text-3xl text-orange-400 leading-none">+</span>
+                            <span className="text-[9px] text-orange-500 uppercase tracking-wide">
+                              {(section.images?.length || 0) === 0 ? 'Add Cover' : 'Add Page'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleMenuImageUpload(e, index, section.images?.length || 0)}
+                              className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                          </div>
+                          <div className="p-2 text-center bg-orange-50">
+                            <span className="text-[10px] text-orange-400 uppercase tracking-wide">
+                              {(section.images?.length || 0) === 0 ? '📋 Cover' : `📄 Page ${section.images?.length || 0}`}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                       <p className="text-[10px] text-blue-600 mt-3">
-                        💡 Upload cover image first, then add menu pages. Click any image to upload/replace.
+                        💡 Click any image to replace it. Add cover first, then menu pages.
                       </p>
                     </div>
                   )}
