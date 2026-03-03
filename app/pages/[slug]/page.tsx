@@ -808,6 +808,47 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             className="text-xs text-gray-500 hover:text-gray-700 border border-dashed border-gray-300 px-3 py-1.5 w-full text-center mt-1"
                           >+ Add Line</button>
                         </div>
+                      ) : section.type === 'philosophy' ? (
+                        /* Paragraph-by-paragraph textareas for philosophy type */
+                        <div className="space-y-4">
+                          {(section.content || '').split('\n\n').map((para: string, paraIdx: number) => (
+                            <div key={paraIdx} className="relative">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] uppercase tracking-widest text-[#aaa]">Paragraph {paraIdx + 1}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const paras = (section.content || '').split('\n\n');
+                                    paras.splice(paraIdx, 1);
+                                    handleSectionChange(index, "content", paras.join('\n\n'));
+                                  }}
+                                  className="text-red-400 hover:text-red-600 text-xs"
+                                  title="Remove paragraph"
+                                >✕ Remove</button>
+                              </div>
+                              <textarea
+                                value={para}
+                                onChange={(e) => {
+                                  const paras = (section.content || '').split('\n\n');
+                                  paras[paraIdx] = e.target.value;
+                                  handleSectionChange(index, "content", paras.join('\n\n'));
+                                }}
+                                rows={5}
+                                className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-4 focus:outline-none focus:border-[var(--verde-accent)] transition-colors text-[var(--verde-heading)] leading-relaxed text-sm resize-y"
+                                placeholder={`Write paragraph ${paraIdx + 1} here...`}
+                              />
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const paras = (section.content || '').split('\n\n').filter(Boolean);
+                              paras.push('');
+                              handleSectionChange(index, "content", paras.join('\n\n'));
+                            }}
+                            className="text-xs text-gray-500 hover:text-gray-700 border border-dashed border-gray-300 px-3 py-2 w-full text-center"
+                          >+ Add Paragraph</button>
+                        </div>
                       ) : (
                         /* Textarea for features / other section types */
                         <div className="space-y-2">
@@ -830,8 +871,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     </div>
                   )}
 
-                  {/* CTA - for text, gallery only (NOT hero) */}
-                  {['text', 'gallery'].includes(section.type) && (
+                  {/* CTA - for text, gallery, philosophy */}
+                  {['text', 'gallery', 'philosophy'].includes(section.type) && (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -860,8 +901,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                         </div>
                       </div>
 
-                      {/* Second CTA - for dinner party etc */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                      {/* Second CTA - for dinner party etc (not philosophy) */}
+                      {section.type !== 'philosophy' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                         <div>
                           <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
                             Second CTA Link <span className="text-[10px] text-gray-500 normal-case">(optional)</span>
@@ -886,7 +927,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             placeholder="CALL US"
                           />
                         </div>
-                      </div>
+                      </div>}
                     </>
                   )}
 
