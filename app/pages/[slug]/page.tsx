@@ -739,7 +739,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                         {['hero', 'parallax'].includes(section.type) ? 'Desktop Image' : 'Section Image'}
                         {['hero', 'parallax'].includes(section.type) && (
                           <span className="ml-2 normal-case text-[10px] text-gray-400 font-normal">
-                            — Landscape · recommended <strong>1920 × 1080 px</strong> (16:9)
+                            — Landscape · recommended <strong>1080 × 1920 px</strong> (16:9)
                           </span>
                         )}
                       </label>
