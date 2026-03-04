@@ -775,8 +775,8 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       </div>
                     </div>
 
-                    {/* Mobile Image — for all sections that have a primary image (except gallery/menu types) */}
-                    {!['gallery', 'menu-category', 'menu', 'contact_info'].includes(section.type) && section.images?.[0] && pageSlug !== 'contact' && (
+                    {/* Mobile Image — only for home page hero sections */}
+                    {!['gallery', 'menu-category', 'menu', 'contact_info'].includes(section.type) && section.images?.[0] && pageSlug === 'home' && (
                       <div className="space-y-2">
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
                           Mobile Image
@@ -1352,12 +1352,12 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                     </div>
                   )}
 
-                  {/* Philosophy Art Photo — images[1] (desktop) + mobileImages[1] (mobile) */}
+                  {/* Philosophy Art Photo — images[1] (desktop only) */}
                   {section.type === 'philosophy' && (
                     <div className="bg-gray-50 border border-gray-200 p-4 rounded">
                       <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-1">Art / Side Photo</h4>
-                      <p className="text-[10px] text-gray-500 mb-4">The large photo shown beside the philosophy text. Upload desktop + optional mobile version.</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <p className="text-[10px] text-gray-500 mb-4">The large photo shown beside the philosophy text. Upload desktop image (landscape recommended).</p>
+                      <div className="grid grid-cols-1 gap-4">
                         {/* Desktop art photo - images[1] */}
                         <div className="space-y-2">
                           <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
@@ -1383,38 +1383,6 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                               </div>
                             )}
                             <input type="file" accept="image/*" onChange={(e) => handleGalleryImageUpload(e, index, 1)} className="absolute inset-0 opacity-0 cursor-pointer" />
-                          </div>
-                        </div>
-                        {/* Mobile art photo - mobileImages[1] */}
-                        <div className="space-y-2">
-                          <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
-                            Mobile
-                            <span className="ml-2 normal-case text-[10px] text-gray-400 font-normal">— Any ratio · optional</span>
-                          </label>
-                          <div className="relative w-full aspect-square bg-[#faf9f6] border-2 border-dashed border-blue-200 flex flex-col items-center justify-center overflow-hidden hover:border-blue-400 transition-colors cursor-pointer">
-                            {section.mobileImages?.[1] ? (
-                              <>
-                                <Image src={section.mobileImages[1]} alt="Art Photo Mobile" fill className="object-cover" unoptimized />
-                                {section['_uploadingMobile_1'] && (
-                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
-                                  </div>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.preventDefault(); e.stopPropagation();
-                                    setSections(prev => { const next = [...prev]; const imgs = [...(next[index].mobileImages || [])]; imgs[1] = ''; next[index] = { ...next[index], mobileImages: imgs }; return next; });
-                                  }}
-                                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs z-10 hover:bg-red-600"
-                                >×</button>
-                              </>
-                            ) : (
-                              <div className="text-center p-4">
-                                <Upload className="mx-auto mb-2 text-blue-200" size={24} />
-                                <span className="text-[10px] uppercase text-blue-300 tracking-widest">Upload Mobile</span>
-                              </div>
-                            )}
-                            <input type="file" accept="image/*" onChange={(e) => handleMobileImageUpload(e, index, 1)} className="absolute inset-0 opacity-0 cursor-pointer" disabled={section['_uploadingMobile_1']} />
                           </div>
                         </div>
                       </div>
