@@ -444,6 +444,65 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
+  // Upload mobile-specific image for hero/parallax sections
+  const handleMobileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const localPreviewUrl = URL.createObjectURL(file);
+    setSections(prevSections => {
+      const newSections = [...prevSections];
+      newSections[index] = {
+        ...newSections[index],
+        mobileImages: [localPreviewUrl],
+        _uploadingMobile: true,
+      };
+      return newSections;
+    });
+
+    setSaving(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${getBackendUrl()}/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.url) {
+        URL.revokeObjectURL(localPreviewUrl);
+        setSections(prevSections => {
+          const newSections = [...prevSections];
+          newSections[index] = {
+            ...newSections[index],
+            mobileImages: [data.url],
+            _uploadingMobile: false,
+          };
+          return newSections;
+        });
+        toast.success('Mobile image uploaded');
+      }
+    } catch (error) {
+      console.error('Mobile upload failed', error);
+      toast.error('Mobile image upload failed');
+      URL.revokeObjectURL(localPreviewUrl);
+      setSections(prevSections => {
+        const newSections = [...prevSections];
+        newSections[index] = {
+          ...newSections[index],
+          mobileImages: [],
+          _uploadingMobile: false,
+        };
+        return newSections;
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Strip ALL client-only (_-prefixed) fields recursively before saving
   const stripClientFields = (obj: any): any => {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
@@ -678,40 +737,105 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
               <div className={needsImage ? "grid grid-cols-1 md:grid-cols-[200px_1fr] gap-8" : ""}>
                 {/* Image Upload Area - Only show for certain types */}
                 {needsImage && (
-                  <div className="space-y-3">
-                    <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
-                      Section Image
-                    </label>
-                    <div className="relative w-full aspect-square bg-[#faf9f6] border-2 border-dashed border-[#e5e0d8] flex flex-col items-center justify-center overflow-hidden hover:border-[var(--verde-accent)] transition-colors cursor-pointer">
-                      {(section.images && section.images[0]) || section.image ? (
-                        <>
-                          <Image
-                            src={section.images?.[0] || section.image}
-                            alt="Preview"
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                          {section._uploading && (
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+                  <div className="space-y-4">
+                    {/* Desktop Image */}
+                    <div className="space-y-2">
+                      <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
+                        {['hero', 'parallax'].includes(section.type) ? 'Desktop Image' : 'Section Image'}
+                        {['hero', 'parallax'].includes(section.type) && (
+                          <span className="ml-2 normal-case text-[10px] text-gray-400 font-normal">
+                            — Landscape · recommended <strong>1920 × 1080 px</strong> (16:9)
+                          </span>
+                        )}
+                      </label>
+                      <div className="relative w-full aspect-square bg-[#faf9f6] border-2 border-dashed border-[#e5e0d8] flex flex-col items-center justify-center overflow-hidden hover:border-[var(--verde-accent)] transition-colors cursor-pointer">
+                        {(section.images && section.images[0]) || section.image ? (
+                          <>
+                            <Image
+                              src={section.images?.[0] || section.image}
+                              alt="Preview"
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            {section._uploading && (
+                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-center p-4">
+                            <Upload className="mx-auto mb-2 text-[#dcd6cc]" size={24} />
+                            <span className="text-[10px] uppercase text-[#999] tracking-widest">Upload Image</span>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageUpload(e, index)}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          disabled={section._uploading}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Mobile Image — only for hero / parallax sections */}
+                    {['hero', 'parallax'].includes(section.type) && (
+                      <div className="space-y-2">
+                        <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
+                          Mobile Image
+                          <span className="ml-2 normal-case text-[10px] text-gray-400 font-normal">
+                            — Portrait · recommended <strong>1080 × 1920 px</strong> (9:16)
+                          </span>
+                        </label>
+                        <div className="relative w-full aspect-square bg-[#faf9f6] border-2 border-dashed border-blue-200 flex flex-col items-center justify-center overflow-hidden hover:border-blue-400 transition-colors cursor-pointer">
+                          {section.mobileImages?.[0] ? (
+                            <>
+                              <Image
+                                src={section.mobileImages[0]}
+                                alt="Mobile Preview"
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                              {section._uploadingMobile && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setSections(prev => {
+                                    const next = [...prev];
+                                    next[index] = { ...next[index], mobileImages: [] };
+                                    return next;
+                                  });
+                                }}
+                                className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs z-10 hover:bg-red-600"
+                                title="Remove mobile image"
+                              >×</button>
+                            </>
+                          ) : (
+                            <div className="text-center p-4">
+                              <Upload className="mx-auto mb-2 text-blue-200" size={24} />
+                              <span className="text-[10px] uppercase text-blue-300 tracking-widest">Upload Mobile</span>
+                              <p className="text-[9px] text-gray-400 mt-1">Portrait: 9:16 or 2:3</p>
                             </div>
                           )}
-                        </>
-                      ) : (
-                        <div className="text-center p-4">
-                          <Upload className="mx-auto mb-2 text-[#dcd6cc]" size={24} />
-                          <span className="text-[10px] uppercase text-[#999] tracking-widest">Upload Image</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleMobileImageUpload(e, index)}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            disabled={section._uploadingMobile}
+                          />
                         </div>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleImageUpload(e, index)}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        disabled={section._uploading}
-                      />
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
