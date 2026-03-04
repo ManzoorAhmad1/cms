@@ -444,19 +444,18 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     }
   };
 
-  // Upload mobile-specific image for hero/parallax sections
-  const handleMobileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  // Upload mobile-specific image — works for any section, any image slot (imgIndex)
+  const handleMobileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, sectionIndex: number, imgIndex = 0) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const uploadingKey = `_uploadingMobile_${imgIndex}`;
     const localPreviewUrl = URL.createObjectURL(file);
     setSections(prevSections => {
       const newSections = [...prevSections];
-      newSections[index] = {
-        ...newSections[index],
-        mobileImages: [localPreviewUrl],
-        _uploadingMobile: true,
-      };
+      const mobileImages = [...(newSections[sectionIndex].mobileImages || [])];
+      mobileImages[imgIndex] = localPreviewUrl;
+      newSections[sectionIndex] = { ...newSections[sectionIndex], mobileImages, [uploadingKey]: true };
       return newSections;
     });
 
@@ -476,11 +475,9 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
         URL.revokeObjectURL(localPreviewUrl);
         setSections(prevSections => {
           const newSections = [...prevSections];
-          newSections[index] = {
-            ...newSections[index],
-            mobileImages: [data.url],
-            _uploadingMobile: false,
-          };
+          const mobileImages = [...(newSections[sectionIndex].mobileImages || [])];
+          mobileImages[imgIndex] = data.url;
+          newSections[sectionIndex] = { ...newSections[sectionIndex], mobileImages, [uploadingKey]: false };
           return newSections;
         });
         toast.success('Mobile image uploaded');
@@ -491,11 +488,9 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
       URL.revokeObjectURL(localPreviewUrl);
       setSections(prevSections => {
         const newSections = [...prevSections];
-        newSections[index] = {
-          ...newSections[index],
-          mobileImages: [],
-          _uploadingMobile: false,
-        };
+        const mobileImages = [...(newSections[sectionIndex].mobileImages || [])];
+        mobileImages[imgIndex] = '';
+        newSections[sectionIndex] = { ...newSections[sectionIndex], mobileImages, [uploadingKey]: false };
         return newSections;
       });
     } finally {
@@ -780,13 +775,13 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       </div>
                     </div>
 
-                    {/* Mobile Image — only for hero / parallax sections */}
-                    {['hero', 'parallax'].includes(section.type) && (
+                    {/* Mobile Image — for all sections that have a primary image (except gallery/menu types) */}
+                    {!['gallery', 'menu-category', 'menu', 'contact_info'].includes(section.type) && section.images?.[0] && pageSlug !== 'contact' && (
                       <div className="space-y-2">
                         <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
                           Mobile Image
                           <span className="ml-2 normal-case text-[10px] text-gray-400 font-normal">
-                            — Portrait · recommended <strong>1080 × 1920 px</strong> (9:16)
+                            — same image works · or upload portrait version for full-screen hero
                           </span>
                         </label>
                         <div className="relative w-full aspect-square bg-[#faf9f6] border-2 border-dashed border-blue-200 flex flex-col items-center justify-center overflow-hidden hover:border-blue-400 transition-colors cursor-pointer">
@@ -799,7 +794,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                                 className="object-cover"
                                 unoptimized
                               />
-                              {section._uploadingMobile && (
+                              {(section['_uploadingMobile_0'] ?? section._uploadingMobile) && (
                                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
                                 </div>
@@ -811,7 +806,9 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                                   e.stopPropagation();
                                   setSections(prev => {
                                     const next = [...prev];
-                                    next[index] = { ...next[index], mobileImages: [] };
+                                    const imgs = [...(next[index].mobileImages || [])];
+                                    imgs[0] = '';
+                                    next[index] = { ...next[index], mobileImages: imgs };
                                     return next;
                                   });
                                 }}
@@ -823,15 +820,15 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             <div className="text-center p-4">
                               <Upload className="mx-auto mb-2 text-blue-200" size={24} />
                               <span className="text-[10px] uppercase text-blue-300 tracking-widest">Upload Mobile</span>
-                              <p className="text-[9px] text-gray-400 mt-1">Portrait: 9:16 or 2:3</p>
+                              <p className="text-[9px] text-gray-400 mt-1">Optional: portrait crop for hero</p>
                             </div>
                           )}
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleMobileImageUpload(e, index)}
+                            onChange={(e) => handleMobileImageUpload(e, index, 0)}
                             className="absolute inset-0 opacity-0 cursor-pointer"
-                            disabled={section._uploadingMobile}
+                            disabled={section['_uploadingMobile_0'] ?? section._uploadingMobile}
                           />
                         </div>
                       </div>
@@ -1351,6 +1348,75 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Philosophy Art Photo — images[1] (desktop) + mobileImages[1] (mobile) */}
+                  {section.type === 'philosophy' && (
+                    <div className="bg-gray-50 border border-gray-200 p-4 rounded">
+                      <h4 className="text-xs uppercase tracking-widest text-gray-600 mb-1">Art / Side Photo</h4>
+                      <p className="text-[10px] text-gray-500 mb-4">The large photo shown beside the philosophy text. Upload desktop + optional mobile version.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Desktop art photo - images[1] */}
+                        <div className="space-y-2">
+                          <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
+                            Desktop
+                            <span className="ml-2 normal-case text-[10px] text-gray-400 font-normal">— Landscape · 1920×1080</span>
+                          </label>
+                          <div className="relative w-full aspect-square bg-[#faf9f6] border-2 border-dashed border-[#e5e0d8] flex flex-col items-center justify-center overflow-hidden hover:border-[var(--verde-accent)] transition-colors cursor-pointer">
+                            {section.images?.[1] ? (
+                              <>
+                                <Image src={section.images[1]} alt="Art Photo Desktop" fill className="object-cover" unoptimized />
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation();
+                                    setSections(prev => { const next = [...prev]; const imgs = [...(next[index].images || [])]; imgs[1] = ''; next[index] = { ...next[index], images: imgs }; return next; });
+                                  }}
+                                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs z-10 hover:bg-red-600"
+                                >×</button>
+                              </>
+                            ) : (
+                              <div className="text-center p-4">
+                                <Upload className="mx-auto mb-2 text-[#dcd6cc]" size={24} />
+                                <span className="text-[10px] uppercase text-[#999] tracking-widest">Upload Desktop</span>
+                              </div>
+                            )}
+                            <input type="file" accept="image/*" onChange={(e) => handleGalleryImageUpload(e, index, 1)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                          </div>
+                        </div>
+                        {/* Mobile art photo - mobileImages[1] */}
+                        <div className="space-y-2">
+                          <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)]">
+                            Mobile
+                            <span className="ml-2 normal-case text-[10px] text-gray-400 font-normal">— Any ratio · optional</span>
+                          </label>
+                          <div className="relative w-full aspect-square bg-[#faf9f6] border-2 border-dashed border-blue-200 flex flex-col items-center justify-center overflow-hidden hover:border-blue-400 transition-colors cursor-pointer">
+                            {section.mobileImages?.[1] ? (
+                              <>
+                                <Image src={section.mobileImages[1]} alt="Art Photo Mobile" fill className="object-cover" unoptimized />
+                                {section['_uploadingMobile_1'] && (
+                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent"></div>
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation();
+                                    setSections(prev => { const next = [...prev]; const imgs = [...(next[index].mobileImages || [])]; imgs[1] = ''; next[index] = { ...next[index], mobileImages: imgs }; return next; });
+                                  }}
+                                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs z-10 hover:bg-red-600"
+                                >×</button>
+                              </>
+                            ) : (
+                              <div className="text-center p-4">
+                                <Upload className="mx-auto mb-2 text-blue-200" size={24} />
+                                <span className="text-[10px] uppercase text-blue-300 tracking-widest">Upload Mobile</span>
+                              </div>
+                            )}
+                            <input type="file" accept="image/*" onChange={(e) => handleMobileImageUpload(e, index, 1)} className="absolute inset-0 opacity-0 cursor-pointer" disabled={section['_uploadingMobile_1']} />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
