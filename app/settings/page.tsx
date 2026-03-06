@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
+  const [newsletterNotifyEmail, setNewsletterNotifyEmail] = useState('');
   const [savingSite, setSavingSite] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
@@ -44,6 +45,7 @@ export default function SettingsPage() {
             setPhone(data.settings.phone || '');
             setEmail(data.settings.email || '');
             setInstagramUrl(data.settings.instagramUrl || '');
+            setNewsletterNotifyEmail(data.settings.newsletterNotifyEmail || '');
           }
         }
       } catch (e) {
@@ -69,6 +71,7 @@ export default function SettingsPage() {
           phone,
           email,
           instagramUrl,
+          newsletterNotifyEmail,
         }),
       });
       const data = await res.json();
@@ -229,6 +232,19 @@ export default function SettingsPage() {
                 className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 text-sm text-[var(--verde-heading)] focus:outline-none focus:border-[var(--verde-accent)] transition-colors"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-[var(--verde-text)] mb-2">
+              Newsletter Notify Email
+            </label>
+            <input
+              type="email"
+              value={newsletterNotifyEmail}
+              onChange={(e) => setNewsletterNotifyEmail(e.target.value)}
+              placeholder="event@yeeels.com"
+              className="w-full bg-[#faf9f6] border border-[#e5e0d8] p-3 text-sm text-[var(--verde-heading)] focus:outline-none focus:border-[var(--verde-accent)] transition-colors"
+            />
           </div>
 
           {/* Instagram */}
