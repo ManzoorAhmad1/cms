@@ -21,6 +21,7 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
   const [seoDescription, setSeoDescription] = useState("");
   const [sections, setSections] = useState<any[]>([]);
   const [activeMenuTab, setActiveMenuTab] = useState(0); // For CMS menu tab navigation
+  const [draggedGalleryIndex, setDraggedGalleryIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchPage = async () => {
@@ -248,6 +249,18 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleGalleryImageReorder = (sectionIndex: number, fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    setSections(prevSections => {
+      const newSections = [...prevSections];
+      const images = [...(newSections[sectionIndex].images || [])];
+      const [moved] = images.splice(fromIndex, 1);
+      images.splice(toIndex, 0, moved);
+      newSections[sectionIndex] = { ...newSections[sectionIndex], images };
+      return newSections;
+    });
   };
 
   const handleMenuImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, sectionIndex: number, imageIndex: number) => {
@@ -1062,8 +1075,21 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {(section.images || []).map((imageUrl: string, idx: number) => {
                           const isUploading = (section as any)[`_uploadingGalleryImage${idx}`];
+                          const canReorder = pageSlug !== 'menu';
                           return (
-                            <div key={idx} className="bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
+                            <div
+                              key={idx}
+                              className="bg-white border border-gray-300 rounded shadow-sm overflow-hidden"
+                              draggable={canReorder && !isUploading}
+                              onDragStart={() => canReorder && setDraggedGalleryIndex(idx)}
+                              onDragOver={(e) => { if (canReorder) e.preventDefault(); }}
+                              onDrop={() => {
+                                if (!canReorder || draggedGalleryIndex === null) return;
+                                handleGalleryImageReorder(index, draggedGalleryIndex, idx);
+                                setDraggedGalleryIndex(null);
+                              }}
+                              onDragEnd={() => setDraggedGalleryIndex(null)}
+                            >
                               <div className="relative aspect-square bg-gray-200 border-2 border-dashed border-gray-300 hover:border-blue-400 transition cursor-pointer">
                                 <>
                                   <Image src={imageUrl} alt={`Gallery Image ${idx + 1}`} fill className="object-cover" unoptimized />
@@ -1129,9 +1155,21 @@ export default function EditPage({ params }: { params: Promise<{ slug: string }>
                         {(section.images || []).map((imageUrl: string, idx: number) => {
                           const isUploading = (section as any)[`_uploadingMenuImage${idx}`];
                           const isCover = idx === 0;
+                          const canReorder = pageSlug !== 'menu';
                           return (
                             <div key={idx} className="bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
-                              <div className="relative aspect-[3/4] bg-gray-200 border-2 border-dashed border-gray-300 hover:border-orange-400 transition cursor-pointer">
+                              <div
+                                className="relative aspect-[3/4] bg-gray-200 border-2 border-dashed border-gray-300 hover:border-orange-400 transition cursor-pointer"
+                                draggable={canReorder && !isUploading}
+                                onDragStart={() => canReorder && setDraggedGalleryIndex(idx)}
+                                onDragOver={(e) => { if (canReorder) e.preventDefault(); }}
+                                onDrop={() => {
+                                  if (!canReorder || draggedGalleryIndex === null) return;
+                                  handleGalleryImageReorder(index, draggedGalleryIndex, idx);
+                                  setDraggedGalleryIndex(null);
+                                }}
+                                onDragEnd={() => setDraggedGalleryIndex(null)}
+                              >
                                 <>
                                   <Image src={imageUrl} alt={`Menu ${isCover ? 'Cover' : `Page ${idx}`}`} fill className="object-cover" unoptimized />
                                   {isUploading && (
